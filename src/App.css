@@ -232,7 +232,7 @@ main {
 .layout-workspace {
   min-height: calc(100vh - 124px);
   display: grid;
-  grid-template-columns: minmax(560px, 1fr) 360px;
+  grid-template-columns: minmax(560px, 1fr) clamp(360px, 22vw, 440px);
 }
 
 .board-section {
@@ -289,9 +289,11 @@ main {
 
 .toolbar-actions {
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .layer-switcher {
+  width: min(100%, 1024px);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   margin: 0 auto 20px;
@@ -340,7 +342,7 @@ main {
 
 .device-stage {
   position: relative;
-  width: min(100%, 700px);
+  width: min(100%, clamp(700px, 38vw, 820px));
   margin: 0 auto;
   padding: 22px 26px 28px;
   overflow: hidden;
@@ -348,6 +350,12 @@ main {
   border: 1px solid #1a1f22;
   border-radius: 8px;
   box-shadow: 0 18px 40px rgba(28, 36, 43, 0.16);
+}
+
+.section-toolbar {
+  width: min(100%, 1024px);
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .device-stage::before {
@@ -632,7 +640,7 @@ main {
 }
 
 .assignment-list {
-  height: min(36vh, 300px);
+  height: clamp(240px, 36vh, 420px);
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -735,6 +743,12 @@ main {
   margin: 3px 0 0;
   color: var(--ink);
   font-size: 25px;
+  overflow-wrap: anywhere;
+}
+
+.page-heading > div:first-child,
+.profile-detail-header > div:last-child {
+  min-width: 0;
 }
 
 .profiles-layout,
@@ -836,6 +850,11 @@ main {
   gap: 14px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
+}
+
+.profile-detail-header h2,
+.profile-detail-header small {
+  overflow-wrap: anywhere;
 }
 
 .profile-stats {
@@ -962,6 +981,7 @@ main {
 .status-row small {
   color: var(--muted);
   font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 .live-label {
@@ -1296,6 +1316,7 @@ main {
 
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
 }
@@ -1334,6 +1355,20 @@ main {
 
   .diagnostic-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .profiles-layout,
+  .status-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-list,
+  .profile-detail,
+  .status-list,
+  .status-settings {
+    min-width: 0;
   }
 }
 
@@ -1377,17 +1412,24 @@ main {
 
   .section-toolbar {
     align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .profile-title {
     flex-direction: column;
     align-items: flex-start;
     gap: 3px;
+    overflow: hidden;
   }
 
   .profile-title input {
-    width: 180px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
     font-size: 17px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .layer-switcher button {
@@ -1466,11 +1508,6 @@ main {
     align-items: stretch;
   }
 
-  .profiles-layout,
-  .status-layout {
-    grid-template-columns: 1fr;
-  }
-
   .profile-stats {
     grid-template-columns: repeat(2, 1fr);
     row-gap: 18px;
@@ -1495,6 +1532,47 @@ main {
   .event-row > span:last-child {
     grid-column: 2 / -1;
   }
+
+  .numeric-editor input,
+  .profile-title input,
+  .search-field input,
+  .ttl-control input {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .section-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .section-toolbar .toolbar-actions {
+    justify-content: flex-end;
+  }
+
+  .profile-title {
+    width: 100%;
+  }
+
+  .page-heading {
+    flex-wrap: wrap;
+  }
+
+  .page-heading > .toolbar-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .status-row {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .status-row .live-label {
+    display: none;
+  }
 }
 
 @media (max-width: 420px) {
@@ -1516,15 +1594,43 @@ main {
     font-size: 9px;
   }
 
-  .status-row {
-    grid-template-columns: 20px 1fr auto;
-  }
-
-  .status-row .live-label {
-    display: none;
-  }
-
   .ttl-control {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 350px) {
+  .board-section,
+  .page-section {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .assignment-panel {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .device-stage {
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  .main-tabs {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .main-tabs button {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .key-grid {
+    gap: 5px;
+  }
+
+  .key > span {
+    font-size: 8px;
   }
 }
