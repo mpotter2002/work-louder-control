@@ -2,6 +2,12 @@
   "name": "work-louder-control",
   "private": true,
   "version": "0.0.0",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://work-louder-control.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mpotter2002/work-louder-control.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

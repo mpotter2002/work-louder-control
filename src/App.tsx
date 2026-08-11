@@ -7,6 +7,7 @@ import {
   Copy,
   Download,
   Gauge,
+  GitFork,
   Keyboard,
   Layers3,
   Link2,
@@ -1138,10 +1139,21 @@ function DiagnosticsView({
           <span>Device health</span>
           <h1>Diagnostics</h1>
         </div>
-        <button className="button secondary" type="button" disabled={!canUseDevice} onClick={onRefresh}>
-          <RefreshCw size={16} />
-          Refresh & ping
-        </button>
+        <div className="toolbar-actions">
+          <a
+            className="button secondary"
+            href="https://github.com/mpotter2002/work-louder-control"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <GitFork size={16} />
+            Source & firmware
+          </a>
+          <button className="button secondary" type="button" disabled={!canUseDevice} onClick={onRefresh}>
+            <RefreshCw size={16} />
+            Refresh & ping
+          </button>
+        </div>
       </div>
 
       <div className="diagnostic-grid">

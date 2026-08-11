@@ -1,9 +1,59 @@
-# Work Louder Control
+# Work Louder Micro Codex
 
-Local-first WebHID configurator for the Work Louder Micro Pad running the custom
-Codex firmware.
+Open-source firmware, WebHID configuration, and automatic Codex status
+lighting for the original Work Louder Micro Pad / Creator Micro.
 
-## Development
+This repository contains:
+
+- A browser configurator for four layers, two encoders, profiles, VIA
+  assignments, status testing, and diagnostics.
+- A QMK keymap with semantic Codex actions and agent-status lighting.
+- A macOS bridge that mirrors local Codex task state onto the Push key.
+- The exact tested `v0.1.0` HEX image and its SHA-256 checksum.
+
+**Configurator:** https://work-louder-control.vercel.app
+
+## Compatibility
+
+Only use this firmware with the QMK target `work_louder/micro`:
+
+- MCU: ATmega32U4
+- USB VID:PID: `574C:E6E3`
+- Bootloader: Atmel DFU
+- VIA protocol: `0x000D`
+
+Do not flash it onto another Work Louder product or hardware revision just
+because the enclosure looks similar.
+
+## Important Flash Warning
+
+The factory firmware on tested boards is read-protected. Flashing this image
+erases it, and this project cannot provide a factory-firmware restore image.
+
+Before flashing:
+
+1. Export every layer, encoder, and macro you can from VIA.
+2. Confirm the device identity and MCU.
+3. Read [the flashing guide](firmware/FLASHING.md).
+4. Accept that returning to the proprietary factory firmware may not be
+   possible without help from Work Louder.
+
+The browser configurator does not flash firmware. It only communicates with a
+board that is already running compatible VIA/Raw HID firmware.
+
+## Repository Layout
+
+```text
+firmware/
+  keymaps/codex/       Custom QMK keymap source
+  bridge/              Python HID bridge and macOS installer
+  releases/v0.1.0/     Tested HEX, checksums, and flash result
+  BUILDING.md          Reproducible QMK build instructions
+  FLASHING.md          DFU flashing and recovery guide
+src/                   React WebHID configurator
+```
+
+## Web Development
 
 Requirements: Node.js 20 or newer and npm.
 
@@ -20,53 +70,38 @@ npm run lint
 npm run build
 ```
 
-## Browser support
+WebHID requires desktop Chrome or Edge and either HTTPS or a loopback
+development origin. Profiles remain local to the browser.
 
-Device access uses WebHID and currently requires desktop Chrome or Edge.
-Firefox and Safari do not expose WebHID. The user must grant device permission
-from the Connect button. WebHID also requires a secure context: HTTPS in
-production or a loopback development origin such as `http://127.0.0.1`.
+## Firmware Features
 
-The app filters for USB VID `0x574C`, PID `0xE6E3`, and the Raw HID collection
-`0xFF60:0x61`. Profile editing, import, and export work without a connected
-device. Profiles are stored locally in the browser.
+- Four VIA-remappable layers
+- Two VIA-remappable encoders
+- Full-board breathing RGB
+- Push-key status overlay:
+  - idle: white
+  - working: blue
+  - needs input: yellow
+  - complete: green
+  - error: pink-red
+- Versioned `WL` Raw HID protocol
+- Semantic Push and reasoning-effort events with F14/F17/F18 fallbacks
+- Five-second maintenance hold for DFU recovery
 
-## Protocols
+See [the protocol reference](firmware/PROTOCOL.md) for packet details.
 
-- VIA protocol `0x000D`: layer count, dynamic keycode get/set, and encoder
-  get/set.
-- Work Louder private protocol `0xFE`, signature `WL`, version `1`: ping,
-  status commands, and incoming Push / effort action events.
+## Limitations
 
-Unknown 16-bit keycodes are kept as numeric values and remain round-trippable.
-The included profiles contain the currently flashed Candidate 1 layout and the
-archived `creator_micro.layout.json` backup.
+- `v0.1.0` hard-codes status colors and animation.
+- Macro text is preserved by the web profile format but is not currently
+  written to VIA's macro buffer.
+- Several Codex commands still type text; Push and effort controls are the
+  semantic Raw HID actions in this release.
+- The macOS status bridge reads Codex's local task files, which are an
+  implementation detail and may change in future Codex versions.
 
-## Firmware limitations
+## License
 
-- Candidate 1 hard-codes status colors and the breathing effect. The app can
-  test status values and TTLs, but cannot persist custom colors, brightness, or
-  animation settings.
-- Profile apply writes the dynamic 4x4 keymap and both encoder directions.
-  Archived macro text is retained in profile JSON but the current apply flow
-  does not rewrite VIA's macro buffer.
-- Automatic Codex task-state lighting is provided by the separate macOS bridge
-  in the firmware workspace; the webpage can also send manual status tests.
-- The custom action keycodes depend on Candidate 1's `SAFE_RANGE` ordering. A
-  future firmware protocol should expose a capability/action table instead of
-  requiring the UI to know those numeric values.
-
-## Vercel deployment
-
-The app is a static Vite build. For Vercel:
-
-- Framework preset: Vite
-- Build command: `npm run build`
-- Output directory: `dist`
-
-No server environment variables are required. Production must use HTTPS for
-WebHID. Each browser profile still needs a one-time user gesture to authorize
-the device.
-
-The Vercel project is connected to this repository's `main` branch, so pushes
-create production deployments automatically.
+This project is licensed under GPL-2.0-or-later. See [LICENSE](LICENSE).
+Work Louder, Figma, VIA, QMK, GitHub, Vercel, and OpenAI/Codex names and
+trademarks belong to their respective owners. See [NOTICE.md](NOTICE.md).
