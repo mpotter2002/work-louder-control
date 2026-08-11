@@ -67,3 +67,6 @@ The app is a static Vite build. For Vercel:
 No server environment variables are required. Production must use HTTPS for
 WebHID. Each browser profile still needs a one-time user gesture to authorize
 the device.
+
+The Vercel project is connected to this repository's `main` branch, so pushes
+create production deployments automatically.
