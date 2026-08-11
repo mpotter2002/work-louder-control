@@ -1,8 +1,9 @@
 import { parseKeycode } from './keycodes'
-import type { Profile } from '../types'
+import type { LightingEffectId, LightingSettings, Profile } from '../types'
 
 const STORAGE_KEY = 'work-louder-control.profiles.v1'
 const FORMAT = 'work-louder-control-profile'
+const LIGHTING_EFFECTS: LightingEffectId[] = ['static', 'breathing', 'orbit', 'wave', 'twinkle']
 
 const ARCHIVED_LAYERS = [
   [
@@ -203,6 +204,41 @@ const CURRENT_ENCODERS = [
   ],
 ]
 
+const DEFAULT_LIGHTING: LightingSettings[] = [
+  {
+    effect: 'static',
+    primaryColor: '#f24e1e',
+    secondaryColor: '#a259ff',
+    brightness: 118,
+    speed: 96,
+  },
+  {
+    effect: 'breathing',
+    primaryColor: '#14b8ff',
+    secondaryColor: '#8b5cf6',
+    brightness: 132,
+    speed: 104,
+  },
+  {
+    effect: 'orbit',
+    primaryColor: '#22c6a8',
+    secondaryColor: '#2f80ff',
+    brightness: 118,
+    speed: 112,
+  },
+  {
+    effect: 'wave',
+    primaryColor: '#f59e0b',
+    secondaryColor: '#ec4899',
+    brightness: 112,
+    speed: 96,
+  },
+]
+
+function createDefaultLighting() {
+  return structuredClone(DEFAULT_LIGHTING)
+}
+
 function parseSeed(code: string): number {
   const value = parseKeycode(code)
   if (value === null) throw new Error(`Unable to parse archived keycode ${code}`)
@@ -233,6 +269,7 @@ function createProfile(
       ),
     ),
     macros: [...macros],
+    lighting: createDefaultLighting(),
   }
 }
 
@@ -281,7 +318,9 @@ export function loadProfiles(): Profile[] {
     const value = localStorage.getItem(STORAGE_KEY)
     if (!value) return []
     const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed.filter(isProfile) : []
+    return Array.isArray(parsed)
+      ? parsed.map(normalizeProfile).filter((profile): profile is Profile => profile !== null)
+      : []
   } catch {
     return []
   }
@@ -313,10 +352,11 @@ export function importProfiles(contents: string): Profile[] {
   if (!Array.isArray(parsed.profiles) || parsed.profiles.length === 0) {
     throw new Error('The profile export does not contain any profiles')
   }
-  if (!parsed.profiles.every(isProfile)) {
+  const profiles = parsed.profiles.map(normalizeProfile)
+  if (profiles.some((profile) => profile === null)) {
     throw new Error('The profile export contains invalid layout data')
   }
-  return parsed.profiles.map((profile) => ({
+  return (profiles as Profile[]).map((profile) => ({
     ...structuredClone(profile),
     id: crypto.randomUUID(),
     dirty: true,
@@ -330,7 +370,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isProfile(value: unknown): value is Profile {
-  if (!isRecord(value)) return false
+  return normalizeProfile(value) !== null
+}
+
+function normalizeProfile(value: unknown): Profile | null {
+  if (!isRecord(value)) return null
   if (
     value.schemaVersion !== 1 ||
     typeof value.id !== 'string' ||
@@ -347,11 +391,11 @@ export function isProfile(value: unknown): value is Profile {
     value.encoders.length !== 4 ||
     !Array.isArray(value.macros)
   ) {
-    return false
+    return null
   }
   const validKeycode = (keycode: unknown) =>
     Number.isInteger(keycode) && Number(keycode) >= 0 && Number(keycode) <= 0xffff
-  return (
+  const hasValidLayout = (
     value.layers.every(
       (layer) => Array.isArray(layer) && layer.length === 16 && layer.every(validKeycode),
     ) &&
@@ -367,4 +411,50 @@ export function isProfile(value: unknown): value is Profile {
     value.macros.length <= 128 &&
     value.macros.every((macro) => typeof macro === 'string')
   )
+  if (!hasValidLayout) return null
+
+  const lighting = normalizeLighting(value.lighting)
+  if (lighting === null) return null
+
+  return {
+    ...value,
+    lighting,
+  } as Profile
+}
+
+function normalizeLighting(value: unknown): LightingSettings[] | null {
+  if (value === undefined) return createDefaultLighting()
+  if (!Array.isArray(value) || value.length !== 4) return null
+
+  const lighting = value.map((setting) => {
+    if (!isRecord(setting)) return null
+    if (
+      typeof setting.effect !== 'string' ||
+      !LIGHTING_EFFECTS.includes(setting.effect as LightingEffectId) ||
+      !isHexColor(setting.primaryColor) ||
+      !isHexColor(setting.secondaryColor) ||
+      !isByte(setting.brightness) ||
+      !isByte(setting.speed)
+    ) {
+      return null
+    }
+    return {
+      effect: setting.effect as LightingEffectId,
+      primaryColor: setting.primaryColor.toLowerCase(),
+      secondaryColor: setting.secondaryColor.toLowerCase(),
+      brightness: setting.brightness,
+      speed: setting.speed,
+    }
+  })
+  return lighting.every((setting) => setting !== null)
+    ? (lighting as LightingSettings[])
+    : null
+}
+
+function isHexColor(value: unknown): value is string {
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
+}
+
+function isByte(value: unknown) {
+  return Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 255
 }

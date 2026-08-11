@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   VIA_COMMANDS,
+  WL_LIGHTING_EFFECTS,
   WlClient,
   decodeViaKeycode,
   encodeViaGetEncoder,
   encodeViaGetKeycode,
   encodeViaSetEncoder,
   encodeViaSetKeycode,
+  encodeWlLightingProfile,
   encodeWl,
   isWlPacket,
 } from './protocol'
@@ -46,5 +48,27 @@ describe('WL protocol', () => {
     expect(WlClient.decodeAction(action)).toBe(3)
     action[2] = 0
     expect(WlClient.decodeAction(action)).toBeNull()
+  })
+
+  it('exposes the stable profile-lighting effect catalogue', () => {
+    expect(Object.keys(WL_LIGHTING_EFFECTS)).toEqual([
+      'static',
+      'breathing',
+      'orbit',
+      'wave',
+      'twinkle',
+    ])
+  })
+
+  it('encodes layer lighting as a compact Raw HID packet', () => {
+    expect(
+      [...encodeWlLightingProfile(1, {
+        effect: 'orbit',
+        primaryColor: '#ff0000',
+        secondaryColor: '#0000ff',
+        brightness: 132,
+        speed: 104,
+      }).slice(0, 13)],
+    ).toEqual([0xfe, 0x57, 0x4c, 0x01, 0x03, 1, 2, 0, 255, 132, 170, 255, 104])
   })
 })

@@ -6,6 +6,16 @@ export type EditorTarget =
 
 export type StatusId = 0 | 1 | 2 | 3 | 4 | 5
 
+export type LightingEffectId = 'static' | 'breathing' | 'orbit' | 'wave' | 'twinkle'
+
+export interface LightingSettings {
+  effect: LightingEffectId
+  primaryColor: string
+  secondaryColor: string
+  brightness: number
+  speed: number
+}
+
 export interface Profile {
   schemaVersion: 1
   id: string
@@ -21,6 +31,7 @@ export interface Profile {
   layers: number[][]
   encoders: [number, number][][]
   macros: string[]
+  lighting: LightingSettings[]
 }
 
 export type ConnectionState = {
@@ -34,6 +45,7 @@ export interface DeviceDiagnostics {
   wlProtocol: number | null
   layerCount: number | null
   currentStatus: StatusId | null
+  lightingProfiles: boolean | null
 }
 
 export interface DeviceEvent {

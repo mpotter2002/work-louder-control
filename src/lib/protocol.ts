@@ -1,4 +1,4 @@
-import type { StatusId } from '../types'
+import type { LightingEffectId, LightingSettings, StatusId } from '../types'
 
 export const REPORT_SIZE = 32
 export const VIA_PROTOCOL_VERSION = 0x000d
@@ -24,7 +24,34 @@ const WL_ID = 0xfe
 const WL_VERSION = 0x01
 const WL_SET_STATUS = 0x01
 const WL_PING = 0x02
+const WL_SET_LIGHTING_PROFILE = 0x03
+const WL_GET_LIGHTING_CAPABILITIES = 0x05
 const WL_ACTION = 0x80
+
+const WL_LIGHTING_EFFECT_IDS: Record<LightingEffectId, number> = {
+  static: 0,
+  breathing: 1,
+  orbit: 2,
+  wave: 3,
+  twinkle: 4,
+}
+
+export const WL_LIGHTING_EFFECTS: Record<
+  LightingEffectId,
+  { id: LightingEffectId; label: string; description: string }
+> = {
+  static: { id: 'static', label: 'Static gradient', description: 'A two-color still light' },
+  breathing: { id: 'breathing', label: 'Breathing', description: 'A soft color pulse' },
+  orbit: { id: 'orbit', label: 'Orbit', description: 'A rotating highlight around the pad' },
+  wave: { id: 'wave', label: 'Wave', description: 'A moving ribbon across the controls' },
+  twinkle: { id: 'twinkle', label: 'Twinkle', description: 'Independent soft flashes' },
+}
+
+export type LightingCapabilities = {
+  profileLighting: boolean
+  profileCount: number
+  effectCount: number
+}
 
 export const WL_STATUSES: Record<
   StatusId,
@@ -92,6 +119,22 @@ export function decodeViaKeycode(response: Uint8Array, expectedCommand: number) 
 
 export function encodeWl(command: number, ...payload: number[]) {
   return packet(WL_ID, 0x57, 0x4c, WL_VERSION, command, ...payload)
+}
+
+export function encodeWlLightingProfile(layer: number, settings: LightingSettings) {
+  const primary = hexToHsv(settings.primaryColor)
+  const secondary = hexToHsv(settings.secondaryColor)
+  return encodeWl(
+    WL_SET_LIGHTING_PROFILE,
+    layer,
+    WL_LIGHTING_EFFECT_IDS[settings.effect],
+    primary.hue,
+    primary.saturation,
+    clampByte(settings.brightness),
+    secondary.hue,
+    secondary.saturation,
+    clampByte(settings.speed),
+  )
 }
 
 export function isWlPacket(data: Uint8Array, command?: number) {
@@ -260,6 +303,31 @@ export class WlClient {
     return normalizeStatus(response[7])
   }
 
+  async getLightingCapabilities(): Promise<LightingCapabilities | null> {
+    const response = await this.transport.request(
+      encodeWl(WL_GET_LIGHTING_CAPABILITIES),
+      (packet) =>
+        isWlPacket(packet) &&
+        (packet[4] === WL_GET_LIGHTING_CAPABILITIES || packet[4] === 0xff),
+    )
+    if (response[4] !== WL_GET_LIGHTING_CAPABILITIES || response[5] !== 1) return null
+    return {
+      profileLighting: true,
+      effectCount: response[6],
+      profileCount: response[7],
+    }
+  }
+
+  async setLightingProfile(layer: number, settings: LightingSettings) {
+    const response = await this.transport.request(
+      encodeWlLightingProfile(layer, settings),
+      (packet) => isWlPacket(packet, WL_SET_LIGHTING_PROFILE),
+    )
+    if (response[5] !== layer || response[6] !== WL_LIGHTING_EFFECT_IDS[settings.effect]) {
+      throw new Error('Device rejected the lighting profile')
+    }
+  }
+
   static decodeAction(data: Uint8Array) {
     return isWlPacket(data, WL_ACTION) && data[5] in WL_ACTIONS ? data[5] : null
   }
@@ -267,4 +335,32 @@ export class WlClient {
 
 function normalizeStatus(value: number): StatusId {
   return value >= 0 && value <= 5 ? (value as StatusId) : 0
+}
+
+function clampByte(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function hexToHsv(hex: string) {
+  const value = Number.parseInt(hex.slice(1), 16)
+  const red = ((value >> 16) & 0xff) / 255
+  const green = ((value >> 8) & 0xff) / 255
+  const blue = (value & 0xff) / 255
+  const maximum = Math.max(red, green, blue)
+  const minimum = Math.min(red, green, blue)
+  const delta = maximum - minimum
+  let hue = 0
+
+  if (delta !== 0) {
+    if (maximum === red) hue = ((green - blue) / delta) % 6
+    else if (maximum === green) hue = (blue - red) / delta + 2
+    else hue = (red - green) / delta + 4
+    hue *= 60
+    if (hue < 0) hue += 360
+  }
+
+  return {
+    hue: clampByte((hue / 360) * 255),
+    saturation: maximum === 0 ? 0 : clampByte((delta / maximum) * 255),
+  }
 }

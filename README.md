@@ -77,7 +77,7 @@ development origin. Profiles remain local to the browser.
 
 - Four VIA-remappable layers
 - Two VIA-remappable encoders
-- Full-board breathing RGB
+- Full-board RGB matrix and underglow
 - Push-key status overlay:
   - idle: white
   - working: blue
@@ -90,9 +90,23 @@ development origin. Profiles remain local to the browser.
 
 See [the protocol reference](firmware/PROTOCOL.md) for packet details.
 
+## Profile Lighting in Main
+
+The current source on `main` adds a lighting palette to each of the four
+layers. The Codex layer defaults to a blue-violet breathing theme. Available
+patterns are static gradient, breathing, orbit, wave, and twinkle; each layer
+has its own primary color, accent color, brightness, and speed.
+
+The web configurator stores these settings in local and exported profiles now.
+Runtime preview and layer-triggered lighting require a firmware build made from
+the current source. This work has not been flashed or released yet.
+
 ## Limitations
 
-- `v0.1.0` hard-codes status colors and animation.
+- The tested `v0.1.0` release hard-codes status colors and animation. It does
+  not support profile-lighting preview.
+- Profile-lighting updates are runtime-only in the current source; reapply a
+  saved profile after power cycling until EEPROM persistence is added.
 - Macro text is preserved by the web profile format but is not currently
   written to VIA's macro buffer.
 - Several Codex commands still type text; Push and effort controls are the

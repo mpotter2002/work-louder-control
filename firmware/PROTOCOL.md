@@ -32,6 +32,33 @@ Statuses:
 
 The response returns the current status in byte 5.
 
+### Set lighting profile (`0x03`)
+
+Updates one of the four runtime layer-lighting profiles. This command does not
+write EEPROM.
+
+- Byte 5: layer (`0` Figma, `1` Codex, `2` PC, `3` Extra)
+- Byte 6: effect (`0` static gradient, `1` breathing, `2` orbit, `3` wave,
+  `4` twinkle)
+- Bytes 7-9: primary hue, saturation, brightness
+- Bytes 10-11: accent hue, saturation
+- Byte 12: speed
+
+The response returns the accepted layer and effect in bytes 5 and 6. Layer
+changes activate their associated lighting profile automatically.
+
+### Get lighting capabilities (`0x05`)
+
+The response identifies profile-lighting support:
+
+- Byte 5: capability revision (`1`)
+- Byte 6: number of supported effects
+- Byte 7: number of supported layer profiles
+
+Firmware before this capability returns `0xFF` as the command byte. The web
+configurator uses that response to keep lighting preview disabled while still
+allowing profiles to be edited and exported.
+
 ## Keyboard to host
 
 ### Action (`0x80`)

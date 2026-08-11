@@ -49,6 +49,7 @@ import {
   VIA_PROTOCOL_VERSION,
   ViaClient,
   WL_ACTIONS,
+  WL_LIGHTING_EFFECTS,
   WL_STATUSES,
   WlClient,
 } from './lib/protocol'
@@ -57,6 +58,7 @@ import type {
   DeviceDiagnostics,
   DeviceEvent,
   EditorTarget,
+  LightingSettings,
   Profile,
   StatusId,
   TabId,
@@ -98,6 +100,7 @@ function App() {
     wlProtocol: null,
     layerCount: null,
     currentStatus: null,
+    lightingProfiles: null,
   })
   const [events, setEvents] = useState<DeviceEvent[]>([
     { id: crypto.randomUUID(), time: nowLabel(), type: 'system', message: 'Configurator ready' },
@@ -222,16 +225,18 @@ function App() {
     const wl = wlRef.current
     if (!via || !wl) return
     try {
-      const [viaProtocol, layerCount, currentStatus] = await Promise.all([
+      const [viaProtocol, layerCount, currentStatus, lightingCapabilities] = await Promise.all([
         via.getProtocolVersion(),
         via.getLayerCount(),
         wl.ping(),
+        wl.getLightingCapabilities(),
       ])
       setDiagnostics({
         viaProtocol,
         wlProtocol: 1,
         layerCount,
         currentStatus,
+        lightingProfiles: lightingCapabilities?.profileLighting ?? false,
       })
       addEvent('success', `Handshake complete: VIA 0x${viaProtocol.toString(16).padStart(4, '0')}`)
     } catch (error) {
@@ -270,6 +275,15 @@ function App() {
       )
       encoders[activeLayer][selected.encoder][selected.direction] = keycode
       return { ...profile, encoders }
+    })
+  }
+
+  function updateLighting(layer: number, settings: LightingSettings) {
+    updateProfile((profile) => {
+      const lighting = profile.lighting.map((current, index) =>
+        index === layer ? settings : current,
+      )
+      return { ...profile, lighting }
     })
   }
 
@@ -363,6 +377,18 @@ function App() {
           setBusy({ label: 'Applying profile', progress: Math.round((complete / total) * 100) })
         }
       }
+      const lightingCapabilities = wlRef.current
+        ? await wlRef.current.getLightingCapabilities()
+        : null
+      if (lightingCapabilities?.profileLighting && wlRef.current) {
+        for (let layer = 0; layer < activeProfile.lighting.length; layer += 1) {
+          await wlRef.current.setLightingProfile(layer, activeProfile.lighting[layer])
+        }
+        setDiagnostics((current) => ({ ...current, lightingProfiles: true }))
+      } else {
+        setDiagnostics((current) => ({ ...current, lightingProfiles: false }))
+        addEvent('warning', 'Layout applied; saved lighting needs the next firmware build')
+      }
       setProfiles((current) =>
         current.map((profile) =>
           profile.id === activeProfile.id ? { ...profile, dirty: false } : profile,
@@ -385,6 +411,24 @@ function App() {
       addEvent('success', `Status set to ${WL_STATUSES[accepted].label}${ttl ? ` for ${ttl}s` : ''}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Status command failed'
+      setStatusError(message)
+      addEvent('error', message)
+    }
+  }
+
+  async function previewLighting(layer: number, settings: LightingSettings) {
+    if (!wlRef.current) return
+    setStatusError('')
+    try {
+      const capabilities = await wlRef.current.getLightingCapabilities()
+      if (!capabilities?.profileLighting) {
+        throw new Error('This firmware does not support profile lighting yet')
+      }
+      await wlRef.current.setLightingProfile(layer, settings)
+      setDiagnostics((current) => ({ ...current, lightingProfiles: true }))
+      addEvent('success', `Previewed ${LAYER_NAMES[layer]} lighting`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Lighting preview failed'
       setStatusError(message)
       addEvent('error', message)
     }
@@ -528,13 +572,19 @@ function App() {
           />
         )}
 
-        {tab === 'status' && (
+        {tab === 'status' && activeProfile && (
           <StatusView
             ttl={ttl}
             setTtl={setTtl}
             currentStatus={diagnostics.currentStatus}
             onTest={(status) => void testStatus(status)}
             canUseDevice={canUseDevice}
+            profile={activeProfile}
+            activeLayer={activeLayer}
+            onSelectLayer={setActiveLayer}
+            onUpdateLighting={updateLighting}
+            onPreviewLighting={(layer, settings) => void previewLighting(layer, settings)}
+            lightingSupported={diagnostics.lightingProfiles === true}
             error={statusError}
           />
         )}
@@ -1015,6 +1065,12 @@ function StatusView({
   currentStatus,
   onTest,
   canUseDevice,
+  profile,
+  activeLayer,
+  onSelectLayer,
+  onUpdateLighting,
+  onPreviewLighting,
+  lightingSupported,
   error,
 }: {
   ttl: number
@@ -1022,8 +1078,20 @@ function StatusView({
   currentStatus: StatusId | null
   onTest: (status: StatusId) => void
   canUseDevice: boolean
+  profile: Profile
+  activeLayer: number
+  onSelectLayer: (layer: number) => void
+  onUpdateLighting: (layer: number, settings: LightingSettings) => void
+  onPreviewLighting: (layer: number, settings: LightingSettings) => void
+  lightingSupported: boolean
   error: string
 }) {
+  const lighting = profile.lighting[activeLayer]
+
+  function updateSetting<K extends keyof LightingSettings>(key: K, value: LightingSettings[K]) {
+    onUpdateLighting(activeLayer, { ...lighting, [key]: value })
+  }
+
   return (
     <section className="page-section">
       <div className="page-heading">
@@ -1092,23 +1160,125 @@ function StatusView({
             </div>
           </div>
           <div className="lighting-preview">
-            <div className="preview-key pulse" />
+            <div
+              className={lighting.effect === 'breathing' ? 'preview-key pulse' : 'preview-key'}
+              style={{
+                background: `linear-gradient(135deg, ${lighting.primaryColor}, ${lighting.secondaryColor})`,
+              }}
+            />
             <div>
-              <strong>Breathing is the base effect</strong>
+              <strong>{WL_LIGHTING_EFFECTS[lighting.effect].label} is the base effect</strong>
               <span>
                 Status color appears on the Push key. A TTL of 0 keeps it active until changed.
               </span>
             </div>
           </div>
-          <div className="planned-setting">
-            <div>
-              <span>Custom status colors</span>
-              <strong>Planned</strong>
+
+          <div className="lighting-editor">
+            <div className="lighting-editor-heading">
+              <div>
+                <span>Profile lighting</span>
+                <strong>{LAYER_NAMES[activeLayer]} layer</strong>
+              </div>
+              <button
+                className="button secondary compact"
+                type="button"
+                disabled={!canUseDevice || !lightingSupported}
+                onClick={() => onPreviewLighting(activeLayer, lighting)}
+              >
+                Preview
+              </button>
             </div>
-            <p>
-              Candidate 1 hard-codes colors in firmware. Color editing needs a future persistent
-              protocol command.
-            </p>
+
+            <div className="lighting-layer-tabs" role="tablist" aria-label="Lighting layer">
+              {LAYER_NAMES.map((name, layer) => (
+                <button
+                  key={name}
+                  className={layer === activeLayer ? 'active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={layer === activeLayer}
+                  onClick={() => onSelectLayer(layer)}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+
+            <div className="color-controls">
+              <label>
+                <span>Primary</span>
+                <input
+                  aria-label="Primary lighting color"
+                  type="color"
+                  value={lighting.primaryColor}
+                  onChange={(event) => updateSetting('primaryColor', event.target.value)}
+                />
+                <code>{lighting.primaryColor}</code>
+              </label>
+              <label>
+                <span>Accent</span>
+                <input
+                  aria-label="Accent lighting color"
+                  type="color"
+                  value={lighting.secondaryColor}
+                  onChange={(event) => updateSetting('secondaryColor', event.target.value)}
+                />
+                <code>{lighting.secondaryColor}</code>
+              </label>
+            </div>
+
+            <div className="effect-grid" role="radiogroup" aria-label="Lighting effect">
+              {Object.values(WL_LIGHTING_EFFECTS).map((effect) => (
+                <button
+                  key={effect.id}
+                  className={lighting.effect === effect.id ? 'active' : ''}
+                  type="button"
+                  role="radio"
+                  aria-checked={lighting.effect === effect.id}
+                  onClick={() => updateSetting('effect', effect.id)}
+                >
+                  <strong>{effect.label}</strong>
+                  <span>{effect.description}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="lighting-slider">
+              <label htmlFor="lighting-brightness">
+                <span>Brightness</span>
+                <strong>{Math.round((lighting.brightness / 255) * 100)}%</strong>
+              </label>
+              <input
+                id="lighting-brightness"
+                type="range"
+                min="8"
+                max="150"
+                value={lighting.brightness}
+                onChange={(event) => updateSetting('brightness', Number(event.target.value))}
+              />
+            </div>
+            <div className="lighting-slider">
+              <label htmlFor="lighting-speed">
+                <span>Speed</span>
+                <strong>{lighting.speed}</strong>
+              </label>
+              <input
+                id="lighting-speed"
+                type="range"
+                min="16"
+                max="220"
+                value={lighting.speed}
+                onChange={(event) => updateSetting('speed', Number(event.target.value))}
+              />
+            </div>
+
+            {!lightingSupported && (
+              <p className="lighting-firmware-note">
+                Saved with this profile. Preview becomes available after the next firmware build is
+                flashed.
+              </p>
+            )}
           </div>
           {error && <div className="inline-error">{error}</div>}
         </aside>

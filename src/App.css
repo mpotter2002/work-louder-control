@@ -1086,29 +1086,169 @@ main {
   line-height: 15px;
 }
 
-.planned-setting {
+.lighting-editor {
   margin-top: 18px;
   padding-top: 17px;
   border-top: 1px solid var(--line);
 }
 
-.planned-setting > div {
+.lighting-editor-heading {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  gap: 12px;
 }
 
-.planned-setting > div strong {
+.lighting-editor-heading > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.lighting-editor-heading span,
+.color-controls label > span,
+.lighting-slider label span {
   color: var(--muted);
   font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
-.planned-setting p {
-  margin: 7px 0 0;
+.lighting-editor-heading strong {
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.lighting-layer-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+.lighting-layer-tabs button {
+  min-width: 0;
+  height: 34px;
+  color: var(--muted);
+  background: #fff;
+  border: 0;
+  border-right: 1px solid var(--line-strong);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.lighting-layer-tabs button:last-child {
+  border-right: 0;
+}
+
+.lighting-layer-tabs button.active {
+  color: var(--ink);
+  background: var(--accent-soft);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.color-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.color-controls label {
+  display: grid;
+  grid-template-columns: auto 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.color-controls input {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.color-controls code {
+  overflow: hidden;
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+.effect-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.effect-grid button {
+  min-width: 0;
+  min-height: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px;
+  color: var(--ink);
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.effect-grid button:hover,
+.effect-grid button.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.effect-grid strong {
+  font-size: 11px;
+}
+
+.effect-grid span,
+.lighting-firmware-note {
   color: var(--muted);
   font-size: 10px;
   line-height: 15px;
+}
+
+.lighting-slider {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.lighting-slider label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lighting-slider label strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.lighting-slider input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.lighting-firmware-note {
+  margin: 15px 0 0;
 }
 
 .inline-error {
