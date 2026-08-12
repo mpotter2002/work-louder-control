@@ -25,6 +25,7 @@ const WL_VERSION = 0x01
 const WL_SET_STATUS = 0x01
 const WL_PING = 0x02
 const WL_SET_LIGHTING_PROFILE = 0x03
+const WL_SET_SLOT_STATUS = 0x04
 const WL_GET_LIGHTING_CAPABILITIES = 0x05
 const WL_ACTION = 0x80
 
@@ -64,6 +65,10 @@ export const WL_STATUSES: Record<
   4: { id: 4, label: 'Complete', description: 'Task finished successfully', color: '#00ff46' },
   5: { id: 5, label: 'Error', description: 'Task failed or is blocked', color: '#ff005a' },
 }
+
+export const WL_SLOT_COUNT = 2
+
+export const WL_SLOT_LABELS = ['Thread 1', 'Thread 2'] as const
 
 export const WL_ACTIONS: Record<number, string> = {
   1: 'Push',
@@ -300,6 +305,17 @@ export class WlClient {
       encodeWl(WL_SET_STATUS, status, Math.max(0, Math.min(255, ttl))),
       (packet) => isWlPacket(packet, WL_SET_STATUS),
     )
+    return normalizeStatus(response[7])
+  }
+
+  async setSlotStatus(slot: number, status: StatusId, ttl: number) {
+    const response = await this.transport.request(
+      encodeWl(WL_SET_SLOT_STATUS, slot, status, Math.max(0, Math.min(255, ttl))),
+      (packet) => isWlPacket(packet) && (packet[4] === WL_SET_SLOT_STATUS || packet[4] === 0xff),
+    )
+    if (response[4] !== WL_SET_SLOT_STATUS) {
+      throw new Error('Device rejected the thread indicator slot')
+    }
     return normalizeStatus(response[7])
   }
 

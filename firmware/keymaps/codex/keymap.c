@@ -13,10 +13,7 @@ enum layers {
 };
 
 enum custom_keycodes {
-    WL_SKILLS = SAFE_RANGE,
-    WL_MCPS,
-    WL_PET,
-    WL_SIDE,
+    WL_PET = SAFE_RANGE,
     WL_PUSH,
     WL_EFFORT_DOWN,
     WL_EFFORT_UP,
@@ -36,6 +33,7 @@ enum wl_protocol_command {
     WL_CMD_SET_STATUS = 0x01,
     WL_CMD_PING = 0x02,
     WL_CMD_SET_LIGHTING_PROFILE = 0x03,
+    WL_CMD_SET_SLOT_STATUS = 0x04,
     WL_CMD_GET_LIGHTING_CAPABILITIES = 0x05,
     WL_CMD_ACTION = 0x80,
 };
@@ -62,12 +60,21 @@ enum wl_action {
 #define WL_REPORT_SIZE 32
 #define WL_MAINTENANCE_HOLD_MS 5000
 #define WL_LIGHTING_LAYER_COUNT 4
+#define WL_SLOT_COUNT 2
 
 static uint8_t wl_current_status = WL_STATUS_NONE;
 static uint32_t wl_status_started;
 static uint32_t wl_status_timeout;
 static uint32_t wl_maintenance_started;
 static uint8_t wl_active_lighting_layer = L_FIGMA;
+
+static const uint8_t wl_slot_positions[WL_SLOT_COUNT][2] = {
+    {0, 0},
+    {0, 1},
+};
+static uint8_t wl_slot_status[WL_SLOT_COUNT];
+static uint32_t wl_slot_started[WL_SLOT_COUNT];
+static uint32_t wl_slot_timeout[WL_SLOT_COUNT];
 
 typedef struct {
     uint8_t effect;
@@ -126,10 +133,10 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         UG_TOGG,          KC_F,             KC_C,             TO(L_CODEX)
     ),
     [L_CODEX] = LAYOUT(
-        KC_NO,            LGUI(KC_N),       WL_PUSH,          WL_MAINTENANCE,
-        LCTL(KC_GRV),     WL_SKILLS,        WL_MCPS,          WL_PET,
-        WL_SIDE,          KC_TRNS,          KC_TRNS,          KC_TRNS,
-        KC_NO,            LGUI(KC_K),       LSFT(LGUI(KC_P)), TO(L_FIGMA)
+        KC_NO,            KC_NO,            WL_PUSH,          WL_MAINTENANCE,
+        LCTL(KC_GRV),     LGUI(KC_N),       LGUI(KC_T),       LGUI(KC_K),
+        LALT(LGUI(KC_S)), WL_PET,           KC_TRNS,          KC_TRNS,
+        KC_NO,            KC_NO,            KC_NO,            TO(L_FIGMA)
     ),
     [L_PC] = LAYOUT(
         LCTL(KC_T),       KC_V,             KC_P,             WL_MAINTENANCE,
@@ -174,6 +181,41 @@ static void wl_set_status(uint8_t status, uint8_t ttl_seconds) {
     wl_current_status = status;
     wl_status_started = timer_read32();
     wl_status_timeout = (uint32_t)ttl_seconds * 1000;
+}
+
+static void wl_set_slot_status(uint8_t slot, uint8_t status, uint8_t ttl_seconds) {
+    if (slot >= WL_SLOT_COUNT) {
+        return;
+    }
+    if (status > WL_STATUS_ERROR) {
+        status = WL_STATUS_NONE;
+    }
+
+    wl_slot_status[slot] = status;
+    wl_slot_started[slot] = timer_read32();
+    wl_slot_timeout[slot] = (uint32_t)ttl_seconds * 1000;
+}
+
+static bool wl_status_color(uint8_t status, rgb_t *color) {
+    switch (status) {
+        case WL_STATUS_IDLE:
+            *color = (rgb_t){150, 150, 150};
+            return true;
+        case WL_STATUS_WORKING:
+            *color = (rgb_t){20, 184, 255};
+            return true;
+        case WL_STATUS_NEEDS_INPUT:
+            *color = (rgb_t){255, 170, 0};
+            return true;
+        case WL_STATUS_COMPLETE:
+            *color = (rgb_t){0, 255, 70};
+            return true;
+        case WL_STATUS_ERROR:
+            *color = (rgb_t){255, 0, 90};
+            return true;
+        default:
+            return false;
+    }
 }
 
 static uint8_t wl_blend_channel(uint8_t first, uint8_t second, uint8_t amount) {
@@ -282,27 +324,9 @@ static void wl_send_action(uint8_t action) {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
-        case WL_SKILLS:
-            if (record->event.pressed) {
-                SEND_STRING("List installed skills and what each does.");
-                tap_code(KC_ENT);
-            }
-            return false;
-        case WL_MCPS:
-            if (record->event.pressed) {
-                SEND_STRING("List configured MCP servers and available tools.");
-                tap_code(KC_ENT);
-            }
-            return false;
         case WL_PET:
             if (record->event.pressed) {
                 SEND_STRING("/pet");
-                tap_code(KC_ENT);
-            }
-            return false;
-        case WL_SIDE:
-            if (record->event.pressed) {
-                SEND_STRING("/side");
                 tap_code(KC_ENT);
             }
             return false;
@@ -341,6 +365,13 @@ void matrix_scan_user(void) {
         timer_elapsed32(wl_status_started) >= wl_status_timeout) {
         wl_set_status(WL_STATUS_NONE, 0);
     }
+
+    for (uint8_t slot = 0; slot < WL_SLOT_COUNT; slot++) {
+        if (wl_slot_status[slot] != WL_STATUS_NONE && wl_slot_timeout[slot] > 0 &&
+            timer_elapsed32(wl_slot_started[slot]) >= wl_slot_timeout[slot]) {
+            wl_set_slot_status(slot, WL_STATUS_NONE, 0);
+        }
+    }
 }
 
 bool via_command_kb(uint8_t *data, uint8_t length) {
@@ -366,6 +397,14 @@ bool via_command_kb(uint8_t *data, uint8_t length) {
             wl_set_lighting_profile(data);
             data[5] = wl_active_lighting_layer;
             data[6] = wl_lighting_profiles[wl_active_lighting_layer].effect;
+            break;
+        case WL_CMD_SET_SLOT_STATUS:
+            if (data[5] >= WL_SLOT_COUNT) {
+                data[4] = 0xFF;
+                break;
+            }
+            wl_set_slot_status(data[5], data[6], data[7]);
+            data[7] = wl_slot_status[data[5]];
             break;
         case WL_CMD_GET_LIGHTING_CAPABILITIES:
             data[5] = 1;
@@ -424,29 +463,28 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         rgb_matrix_set_color(led_index, color.r, color.g, color.b);
     }
 
+    for (uint8_t slot = 0; slot < WL_SLOT_COUNT; slot++) {
+        rgb_t slot_color;
+        if (!wl_status_color(wl_slot_status[slot], &slot_color)) {
+            continue;
+        }
+
+        uint8_t slot_led =
+            g_led_config.matrix_co[wl_slot_positions[slot][0]][wl_slot_positions[slot][1]];
+        if (slot_led == NO_LED || slot_led < led_min || slot_led >= led_max) {
+            continue;
+        }
+        rgb_matrix_set_color(slot_led, slot_color.r, slot_color.g, slot_color.b);
+    }
+
+    rgb_t status_color;
     uint8_t status_led = g_led_config.matrix_co[WL_STATUS_ROW][WL_STATUS_COL];
     if (status_led == NO_LED || status_led < led_min || status_led >= led_max ||
-        wl_current_status == WL_STATUS_NONE) {
+        !wl_status_color(wl_current_status, &status_color)) {
         return true;
     }
 
-    switch (wl_current_status) {
-        case WL_STATUS_IDLE:
-            rgb_matrix_set_color(status_led, 150, 150, 150);
-            break;
-        case WL_STATUS_WORKING:
-            rgb_matrix_set_color(status_led, 20, 184, 255);
-            break;
-        case WL_STATUS_NEEDS_INPUT:
-            rgb_matrix_set_color(status_led, 255, 170, 0);
-            break;
-        case WL_STATUS_COMPLETE:
-            rgb_matrix_set_color(status_led, 0, 255, 70);
-            break;
-        case WL_STATUS_ERROR:
-            rgb_matrix_set_color(status_led, 255, 0, 90);
-            break;
-    }
+    rgb_matrix_set_color(status_led, status_color.r, status_color.g, status_color.b);
     return true;
 }
 

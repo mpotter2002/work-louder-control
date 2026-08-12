@@ -78,6 +78,7 @@ development origin. Profiles remain local to the browser.
 - Four VIA-remappable layers
 - Two VIA-remappable encoders
 - Full-board RGB matrix and underglow
+- Two thread indicator keys on the Codex layer for parallel agents
 - Push-key status overlay:
   - idle: white
   - working: blue
@@ -109,8 +110,9 @@ the current source. This work has not been flashed or released yet.
   saved profile after power cycling until EEPROM persistence is added.
 - Macro text is preserved by the web profile format but is not currently
   written to VIA's macro buffer.
-- Several Codex commands still type text; Push and effort controls are the
-  semantic Raw HID actions in this release.
+- The Codex layer now uses the ChatGPT app's real menu shortcuts instead of
+  typed prompt text. Only the pet key still types a slash command, and Push
+  and effort remain the semantic Raw HID actions.
 - The macOS status bridge reads Codex's local task files, which are an
   implementation detail and may change in future Codex versions.
 

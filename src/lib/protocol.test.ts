@@ -16,8 +16,8 @@ import {
 describe('VIA packet encoding', () => {
   it('encodes get and set keycode packets', () => {
     expect([...encodeViaGetKeycode(2, 3, 1).slice(0, 6)]).toEqual([0x04, 2, 3, 1, 0, 0])
-    expect([...encodeViaSetKeycode(1, 2, 3, 0x7e44).slice(0, 6)]).toEqual([
-      0x05, 1, 2, 3, 0x7e, 0x44,
+    expect([...encodeViaSetKeycode(1, 2, 3, 0x7e41).slice(0, 6)]).toEqual([
+      0x05, 1, 2, 3, 0x7e, 0x41,
     ])
   })
 
@@ -30,8 +30,8 @@ describe('VIA packet encoding', () => {
 
   it('decodes VIA big-endian keycodes', () => {
     const response = new Uint8Array(32)
-    response.set([VIA_COMMANDS.getKeycode, 1, 2, 3, 0x7e, 0x46])
-    expect(decodeViaKeycode(response, VIA_COMMANDS.getKeycode)).toBe(0x7e46)
+    response.set([VIA_COMMANDS.getKeycode, 1, 2, 3, 0x7e, 0x43])
+    expect(decodeViaKeycode(response, VIA_COMMANDS.getKeycode)).toBe(0x7e43)
   })
 })
 

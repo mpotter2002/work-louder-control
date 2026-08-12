@@ -761,6 +761,7 @@ main {
 .profile-list,
 .profile-detail,
 .status-list,
+.slot-indicators,
 .status-settings,
 .event-log {
   background: var(--panel);
@@ -987,6 +988,75 @@ main {
 .live-label {
   padding: 4px 7px;
   color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.status-column {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  align-self: start;
+}
+
+.slot-indicators {
+  padding: 8px 16px;
+}
+
+.slot-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.slot-heading strong {
+  font-size: 12px;
+}
+
+.slot-heading span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.slot-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.slot-row:last-child {
+  border-bottom: 0;
+}
+
+.slot-row > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-row strong {
+  font-size: 12px;
+}
+
+.slot-row small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.slot-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.slot-buttons .button.active {
+  color: var(--accent);
+  border-color: var(--accent);
   background: var(--accent-soft);
 }
 

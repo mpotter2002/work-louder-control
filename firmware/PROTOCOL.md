@@ -47,6 +47,19 @@ write EEPROM.
 The response returns the accepted layer and effect in bytes 5 and 6. Layer
 changes activate their associated lighting profile automatically.
 
+### Set thread slot status (`0x04`)
+
+Sets one of the two parallel-agent indicators on the top row of the Codex
+layer. Slot `0` is the top-left key and slot `1` is the key beside it. Slot
+indicators are independent of the Push key status set by `0x01`.
+
+- Byte 5: slot (`0` or `1`)
+- Byte 6: status, using the same values as `0x01`
+- Byte 7: time to live in seconds (`0` means no timeout)
+- Byte 7 in the response: accepted status
+
+An out-of-range slot returns `0xFF` as the command byte.
+
 ### Get lighting capabilities (`0x05`)
 
 The response identifies profile-lighting support:

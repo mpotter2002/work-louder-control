@@ -132,14 +132,11 @@ const LAYERS: Record<string, number> = {
 }
 
 export const CUSTOM_ACTIONS: Record<string, number> = {
-  WL_SKILLS: 0x7e40,
-  WL_MCPS: 0x7e41,
-  WL_PET: 0x7e42,
-  WL_SIDE: 0x7e43,
-  WL_PUSH: 0x7e44,
-  WL_EFFORT_DOWN: 0x7e45,
-  WL_EFFORT_UP: 0x7e46,
-  WL_MAINTENANCE: 0x7e47,
+  WL_PET: 0x7e40,
+  WL_PUSH: 0x7e41,
+  WL_EFFORT_DOWN: 0x7e42,
+  WL_EFFORT_UP: 0x7e43,
+  WL_MAINTENANCE: 0x7e44,
 }
 
 const NAMES_BY_VALUE = new Map<number, string>()
@@ -213,10 +210,7 @@ export function keycodeDescription(value: number): string {
   if (custom) {
     return (
       {
-        WL_SKILLS: 'Type the installed skills request',
-        WL_MCPS: 'Type the MCP servers request',
         WL_PET: 'Open the Codex pet',
-        WL_SIDE: 'Open a side task',
         WL_PUSH: 'Send the Push semantic action',
         WL_EFFORT_DOWN: 'Decrease reasoning effort',
         WL_EFFORT_UP: 'Increase reasoning effort',
@@ -285,13 +279,31 @@ export const ASSIGNMENT_GROUPS: {
     items: Array.from({ length: 16 }, (_, index) => option(`Macro slot ${index}`, `MACRO(${index})`)),
   },
   {
+    id: 'codex',
+    label: 'Codex app',
+    items: [
+      option('New chat', 'G(KC_N)'),
+      option('Quick chat', 'LAG(KC_N)'),
+      option('Open command menu', 'G(KC_K)'),
+      option('Open terminal', 'C(KC_GRV)'),
+      option('Open browser tab', 'G(KC_T)'),
+      option('Toggle browser panel', 'LSG(KC_B)'),
+      option('Open side chat', 'LAG(KC_S)'),
+      option('Toggle sidebar', 'G(KC_B)'),
+      option('Toggle bottom panel', 'G(KC_J)'),
+      option('Toggle review panel', 'LAG(KC_B)'),
+      option('Open review tab', 'LCS(KC_G)'),
+      option('Previous chat', 'LSG(KC_LBRC)'),
+      option('Next chat', 'LSG(KC_RBRC)'),
+      option('Search files', 'G(KC_P)'),
+      option('Keyboard shortcuts', 'G(KC_SLSH)'),
+    ],
+  },
+  {
     id: 'firmware',
     label: 'Firmware',
     items: [
-      option('List skills', 'WL_SKILLS'),
-      option('List MCP servers', 'WL_MCPS'),
       option('Codex pet', 'WL_PET'),
-      option('Side task', 'WL_SIDE'),
       option('Push repository', 'WL_PUSH'),
       option('Reasoning effort down', 'WL_EFFORT_DOWN'),
       option('Reasoning effort up', 'WL_EFFORT_UP'),

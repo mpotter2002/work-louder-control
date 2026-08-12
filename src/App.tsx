@@ -50,6 +50,8 @@ import {
   ViaClient,
   WL_ACTIONS,
   WL_LIGHTING_EFFECTS,
+  WL_SLOT_COUNT,
+  WL_SLOT_LABELS,
   WL_STATUSES,
   WlClient,
 } from './lib/protocol'
@@ -108,6 +110,9 @@ function App() {
   const [busy, setBusy] = useState<{ label: string; progress: number } | null>(null)
   const [confirmApply, setConfirmApply] = useState(false)
   const [ttl, setTtl] = useState(15)
+  const [slotStatuses, setSlotStatuses] = useState<StatusId[]>(() =>
+    Array.from({ length: WL_SLOT_COUNT }, () => 0 as StatusId),
+  )
   const [statusError, setStatusError] = useState('')
   const transportRef = useRef<HIDTransport | null>(null)
   const viaRef = useRef<ViaClient | null>(null)
@@ -416,6 +421,25 @@ function App() {
     }
   }
 
+  async function testSlotStatus(slot: number, status: StatusId) {
+    if (!wlRef.current) return
+    setStatusError('')
+    try {
+      const accepted = await wlRef.current.setSlotStatus(slot, status, ttl)
+      setSlotStatuses((current) =>
+        current.map((value, index) => (index === slot ? accepted : value)),
+      )
+      addEvent(
+        'success',
+        `${WL_SLOT_LABELS[slot]} set to ${WL_STATUSES[accepted].label}${ttl ? ` for ${ttl}s` : ''}`,
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Thread indicator command failed'
+      setStatusError(message)
+      addEvent('error', message)
+    }
+  }
+
   async function previewLighting(layer: number, settings: LightingSettings) {
     if (!wlRef.current) return
     setStatusError('')
@@ -578,6 +602,8 @@ function App() {
             setTtl={setTtl}
             currentStatus={diagnostics.currentStatus}
             onTest={(status) => void testStatus(status)}
+            slotStatuses={slotStatuses}
+            onTestSlot={(slot, status) => void testSlotStatus(slot, status)}
             canUseDevice={canUseDevice}
             profile={activeProfile}
             activeLayer={activeLayer}
@@ -1064,6 +1090,8 @@ function StatusView({
   setTtl,
   currentStatus,
   onTest,
+  slotStatuses,
+  onTestSlot,
   canUseDevice,
   profile,
   activeLayer,
@@ -1077,6 +1105,8 @@ function StatusView({
   setTtl: (ttl: number) => void
   currentStatus: StatusId | null
   onTest: (status: StatusId) => void
+  slotStatuses: StatusId[]
+  onTestSlot: (slot: number, status: StatusId) => void
   canUseDevice: boolean
   profile: Profile
   activeLayer: number
@@ -1106,28 +1136,67 @@ function StatusView({
       </div>
 
       <div className="status-layout">
-        <div className="status-list">
-          {Object.values(WL_STATUSES).map((status) => (
-            <div
-              className={currentStatus === status.id ? 'status-row active' : 'status-row'}
-              key={status.id}
-            >
-              <span className="status-swatch" style={{ backgroundColor: status.color }} />
-              <div>
-                <strong>{status.label}</strong>
-                <small>{status.description}</small>
-              </div>
-              {currentStatus === status.id && <span className="live-label">Live</span>}
-              <button
-                className="button secondary compact"
-                type="button"
-                disabled={!canUseDevice}
-                onClick={() => onTest(status.id)}
+        <div className="status-column">
+          <div className="status-list">
+            {Object.values(WL_STATUSES).map((status) => (
+              <div
+                className={currentStatus === status.id ? 'status-row active' : 'status-row'}
+                key={status.id}
               >
-                Test
-              </button>
+                <span className="status-swatch" style={{ backgroundColor: status.color }} />
+                <div>
+                  <strong>{status.label}</strong>
+                  <small>{status.description}</small>
+                </div>
+                {currentStatus === status.id && <span className="live-label">Live</span>}
+                <button
+                  className="button secondary compact"
+                  type="button"
+                  disabled={!canUseDevice}
+                  onClick={() => onTest(status.id)}
+                >
+                  Test
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="slot-indicators">
+            <div className="slot-heading">
+              <strong>Thread indicators</strong>
+              <span>The top two keys track parallel agents</span>
             </div>
-          ))}
+            {slotStatuses.map((slotStatus, slot) => (
+              <div className="slot-row" key={WL_SLOT_LABELS[slot]}>
+                <span
+                  className="status-swatch"
+                  style={{ backgroundColor: WL_STATUSES[slotStatus].color }}
+                />
+                <div>
+                  <strong>{WL_SLOT_LABELS[slot]}</strong>
+                  <small>{WL_STATUSES[slotStatus].label}</small>
+                </div>
+                <div className="slot-buttons">
+                  {Object.values(WL_STATUSES).map((status) => (
+                    <button
+                      className={
+                        slotStatus === status.id
+                          ? 'button secondary compact active'
+                          : 'button secondary compact'
+                      }
+                      key={status.id}
+                      type="button"
+                      disabled={!canUseDevice}
+                      title={status.label}
+                      onClick={() => onTestSlot(slot, status.id)}
+                    >
+                      {status.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <aside className="status-settings">
