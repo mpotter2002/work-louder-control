@@ -134,9 +134,9 @@ const CURRENT_LAYERS = [
     'TO(1)',
   ],
   [
+    'LCA(KC_S)',
     'KC_NO',
-    'KC_NO',
-    'KC_NO',
+    'LCA(KC_M)',
     'WL_MAINTENANCE',
     'C(KC_GRV)',
     'G(KC_N)',

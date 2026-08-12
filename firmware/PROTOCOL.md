@@ -84,6 +84,10 @@ Byte 5 contains the action:
 - `3`: effort up
 - `4`: launch Figma
 
+Two Codex commands ship with no default binding and are assigned in
+`~/.codex/keybindings.json`: `openSkills` on `Ctrl+Alt+S` and `mcpSettings` on
+`Ctrl+Alt+M`, matching the two upper keys of the Codex layer.
+
 Actions `1` and `4` also emit a fallback keycode, `F14` and `F15`, so a host
 without the bridge running can still bind them. The effort actions instead tap
 `Ctrl+Alt+Down` and `Ctrl+Alt+Up`, which must be assigned to

@@ -136,7 +136,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         WL_FIGMA,         KC_F,             KC_C,             TO(L_CODEX)
     ),
     [L_CODEX] = LAYOUT(
-        KC_NO,            KC_NO,            KC_NO,            WL_MAINTENANCE,
+        LCTL(LALT(KC_S)), KC_NO,            LCTL(LALT(KC_M)), WL_MAINTENANCE,
         LCTL(KC_GRV),     LGUI(KC_N),       LGUI(KC_K),       WL_PET,
         LALT(LGUI(KC_S)), LGUI(KC_T),       KC_ENT,           KC_ESC,
         WL_FIGMA,         WL_VOICE,         WL_PUSH,          TO(L_FIGMA)

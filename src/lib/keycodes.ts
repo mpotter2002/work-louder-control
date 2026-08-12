@@ -291,6 +291,8 @@ export const ASSIGNMENT_GROUPS: {
       option('Open command menu', 'G(KC_K)'),
       option('Approve request', 'KC_ENT'),
       option('Decline request', 'KC_ESC'),
+      option('Go to skill', 'LCA(KC_S)'),
+      option('Configure MCP', 'LCA(KC_M)'),
       option('Open terminal', 'C(KC_GRV)'),
       option('Open browser tab', 'G(KC_T)'),
       option('Toggle browser panel', 'LSG(KC_B)'),
