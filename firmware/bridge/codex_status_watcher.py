@@ -22,6 +22,7 @@ from work_louder_bridge import (
     WorkLouderBridge,
     build_packet,
     build_slot_packet,
+    run_action,
 )
 
 COMPLETE_SECONDS = 8
@@ -254,8 +255,8 @@ class StatusPublisher:
         self.last_sent: str | None = None
         self.last_slots: list[str] = ["none"] * SLOT_COUNT
 
-    def publish(self, status: str, slots: list[str]) -> bool:
-        if status == self.last_sent and slots == self.last_slots:
+    def publish(self, status: str, slots: list[str], run_actions: bool = False) -> bool:
+        if status == self.last_sent and slots == self.last_slots and not run_actions:
             return True
 
         bridge = WorkLouderBridge()
@@ -277,6 +278,11 @@ class StatusPublisher:
                 bridge.send(build_slot_packet(slot, STATUSES[slot_status], 0))
                 self.last_slots[slot] = slot_status
                 logging.info("Codex thread %d -> %s", slot + 1, slot_status)
+
+            if run_actions:
+                for action in bridge.take_actions():
+                    logging.info("Work Louder action: %s", action)
+                    run_action(action)
         finally:
             bridge.close()
 
@@ -296,6 +302,11 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Print state changes without opening the keyboard.",
+    )
+    parser.add_argument(
+        "--run-actions",
+        action="store_true",
+        help="Carry out host actions such as launching Figma.",
     )
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
@@ -322,7 +333,7 @@ def main() -> int:
                 last_printed = printable
         else:
             try:
-                publisher.publish(status, slots)
+                publisher.publish(status, slots, args.run_actions)
             except Exception as error:
                 logging.warning("Could not update Work Louder status: %s", error)
 

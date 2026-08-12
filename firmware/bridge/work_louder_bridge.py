@@ -94,6 +94,9 @@ class WorkLouderBridge:
                 "Work Louder Micro Pad Raw HID interface was not found."
             )
         self.device = hid.Device(path=interfaces[0]["path"])
+        # Key presses arrive unsolicited, so they can land in the middle of a
+        # request. Hold them here instead of mistaking them for a response.
+        self.pending_actions: list[int] = []
 
     def close(self) -> None:
         self.device.close()
@@ -109,12 +112,31 @@ class WorkLouderBridge:
         deadline = time.monotonic() + timeout_ms / 1000
         while time.monotonic() < deadline:
             response = bytes(self.device.read(REPORT_SIZE, 50))
-            if response and is_protocol_packet(response):
-                return response
+            if not response or not is_protocol_packet(response):
+                continue
+            if response[4] == CMD_ACTION:
+                self.pending_actions.append(response[5])
+                continue
+            return response
         raise TimeoutError("The keyboard did not return a protocol response.")
 
     def read(self, timeout_ms: int = 250) -> bytes:
         return bytes(self.device.read(REPORT_SIZE, timeout_ms))
+
+    def take_actions(self, timeout_ms: int = 0) -> list[str]:
+        """Return the action names queued since the last call."""
+        while True:
+            packet = self.read(timeout_ms)
+            if not packet or not is_protocol_packet(packet):
+                break
+            if packet[4] == CMD_ACTION:
+                self.pending_actions.append(packet[5])
+
+        actions = [
+            ACTIONS.get(value, f"unknown-{value}") for value in self.pending_actions
+        ]
+        self.pending_actions.clear()
+        return actions
 
 
 def command_list() -> int:
@@ -187,9 +209,7 @@ def command_listen(run: bool) -> int:
     print("Listening for Work Louder actions. Press Ctrl-C to stop.")
     try:
         while True:
-            packet = bridge.read()
-            if is_protocol_packet(packet) and packet[4] == CMD_ACTION:
-                action = ACTIONS.get(packet[5], f"unknown-{packet[5]}")
+            for action in bridge.take_actions(250):
                 print(action, flush=True)
                 if run:
                     run_action(action)

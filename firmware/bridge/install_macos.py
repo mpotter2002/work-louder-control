@@ -58,6 +58,7 @@ def install() -> None:
             str(watcher),
             "--database",
             str(database),
+            "--run-actions",
         ],
         "WorkingDirectory": str(bridge_dir),
         "RunAtLoad": True,
