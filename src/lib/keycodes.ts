@@ -137,6 +137,8 @@ export const CUSTOM_ACTIONS: Record<string, number> = {
   WL_EFFORT_DOWN: 0x7e42,
   WL_EFFORT_UP: 0x7e43,
   WL_MAINTENANCE: 0x7e44,
+  WL_FIGMA: 0x7e45,
+  WL_VOICE: 0x7e46,
 }
 
 const NAMES_BY_VALUE = new Map<number, string>()
@@ -215,6 +217,8 @@ export function keycodeDescription(value: number): string {
         WL_EFFORT_DOWN: 'Decrease reasoning effort',
         WL_EFFORT_UP: 'Increase reasoning effort',
         WL_MAINTENANCE: 'Hold for bootloader recovery',
+        WL_FIGMA: 'Launch Figma through the bridge',
+        WL_VOICE: 'Hold to dictate into the Codex composer',
       }[custom] ?? custom
     )
   }
@@ -285,6 +289,8 @@ export const ASSIGNMENT_GROUPS: {
       option('New chat', 'G(KC_N)'),
       option('Quick chat', 'LAG(KC_N)'),
       option('Open command menu', 'G(KC_K)'),
+      option('Approve request', 'KC_ENT'),
+      option('Decline request', 'KC_ESC'),
       option('Open terminal', 'C(KC_GRV)'),
       option('Open browser tab', 'G(KC_T)'),
       option('Toggle browser panel', 'LSG(KC_B)'),
@@ -308,10 +314,11 @@ export const ASSIGNMENT_GROUPS: {
       option('Reasoning effort down', 'WL_EFFORT_DOWN'),
       option('Reasoning effort up', 'WL_EFFORT_UP'),
       option('Maintenance / recovery', 'WL_MAINTENANCE'),
+      option('Launch Figma', 'WL_FIGMA'),
+      option('Hold to dictate', 'WL_VOICE'),
       option('Lighting toggle', 'UG_TOGG'),
       option('F14 fallback', 'KC_F14'),
-      option('F17 fallback', 'KC_F17'),
-      option('F18 fallback', 'KC_F18'),
+      option('F15 fallback', 'KC_F15'),
     ],
   },
 ]

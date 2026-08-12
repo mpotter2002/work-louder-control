@@ -18,6 +18,8 @@ enum custom_keycodes {
     WL_EFFORT_DOWN,
     WL_EFFORT_UP,
     WL_MAINTENANCE,
+    WL_FIGMA,
+    WL_VOICE,
 };
 
 enum wl_status {
@@ -51,11 +53,12 @@ enum wl_action {
     WL_ACTION_PUSH = 0x01,
     WL_ACTION_EFFORT_DOWN = 0x02,
     WL_ACTION_EFFORT_UP = 0x03,
+    WL_ACTION_FIGMA = 0x04,
 };
 
 #define WL_PROTOCOL_ID 0xFE
 #define WL_PROTOCOL_VERSION 0x01
-#define WL_STATUS_ROW 0
+#define WL_STATUS_ROW 3
 #define WL_STATUS_COL 2
 #define WL_REPORT_SIZE 32
 #define WL_MAINTENANCE_HOLD_MS 5000
@@ -69,8 +72,8 @@ static uint32_t wl_maintenance_started;
 static uint8_t wl_active_lighting_layer = L_FIGMA;
 
 static const uint8_t wl_slot_positions[WL_SLOT_COUNT][2] = {
-    {0, 0},
     {0, 1},
+    {0, 2},
 };
 static uint8_t wl_slot_status[WL_SLOT_COUNT];
 static uint32_t wl_slot_started[WL_SLOT_COUNT];
@@ -130,13 +133,13 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         LGUI(KC_T),       KC_V,             KC_P,             WL_MAINTENANCE,
         LSFT(KC_L),       KC_R,             KC_O,             KC_L,
         LALT(KC_A),       LCTL(LALT(KC_V)), LCTL(LALT(KC_H)), LALT(KC_D),
-        UG_TOGG,          KC_F,             KC_C,             TO(L_CODEX)
+        WL_FIGMA,         KC_F,             KC_C,             TO(L_CODEX)
     ),
     [L_CODEX] = LAYOUT(
-        KC_NO,            KC_NO,            WL_PUSH,          WL_MAINTENANCE,
-        LCTL(KC_GRV),     LGUI(KC_N),       LGUI(KC_T),       LGUI(KC_K),
-        LALT(LGUI(KC_S)), WL_PET,           KC_TRNS,          KC_TRNS,
-        KC_NO,            KC_NO,            KC_NO,            TO(L_FIGMA)
+        KC_NO,            KC_NO,            KC_NO,            WL_MAINTENANCE,
+        LCTL(KC_GRV),     LGUI(KC_N),       LGUI(KC_K),       WL_PET,
+        LALT(LGUI(KC_S)), LGUI(KC_T),       KC_ENT,           KC_ESC,
+        WL_FIGMA,         WL_VOICE,         WL_PUSH,          TO(L_FIGMA)
     ),
     [L_PC] = LAYOUT(
         LCTL(KC_T),       KC_V,             KC_P,             WL_MAINTENANCE,
@@ -339,13 +342,30 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case WL_EFFORT_DOWN:
             if (record->event.pressed) {
                 wl_send_action(WL_ACTION_EFFORT_DOWN);
-                tap_code(KC_F17);
+                tap_code16(LCTL(LALT(KC_DOWN)));
             }
             return false;
         case WL_EFFORT_UP:
             if (record->event.pressed) {
                 wl_send_action(WL_ACTION_EFFORT_UP);
-                tap_code(KC_F18);
+                tap_code16(LCTL(LALT(KC_UP)));
+            }
+            return false;
+        case WL_FIGMA:
+            if (record->event.pressed) {
+                wl_send_action(WL_ACTION_FIGMA);
+                tap_code(KC_F15);
+            }
+            return false;
+        case WL_VOICE:
+            // Codex listens for a held Ctrl+Shift+D as its press-and-hold
+            // dictation gesture, so mirror the physical key state.
+            if (record->event.pressed) {
+                register_mods(MOD_BIT(KC_LCTL) | MOD_BIT(KC_LSFT));
+                register_code(KC_D);
+            } else {
+                unregister_code(KC_D);
+                unregister_mods(MOD_BIT(KC_LCTL) | MOD_BIT(KC_LSFT));
             }
             return false;
         case WL_MAINTENANCE:
@@ -463,6 +483,13 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         rgb_matrix_set_color(led_index, color.r, color.g, color.b);
     }
 
+    rgb_t status_color;
+    uint8_t status_led = g_led_config.matrix_co[WL_STATUS_ROW][WL_STATUS_COL];
+    if (status_led != NO_LED && status_led >= led_min && status_led < led_max &&
+        wl_status_color(wl_current_status, &status_color)) {
+        rgb_matrix_set_color(status_led, status_color.r, status_color.g, status_color.b);
+    }
+
     for (uint8_t slot = 0; slot < WL_SLOT_COUNT; slot++) {
         rgb_t slot_color;
         if (!wl_status_color(wl_slot_status[slot], &slot_color)) {
@@ -477,14 +504,6 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         rgb_matrix_set_color(slot_led, slot_color.r, slot_color.g, slot_color.b);
     }
 
-    rgb_t status_color;
-    uint8_t status_led = g_led_config.matrix_co[WL_STATUS_ROW][WL_STATUS_COL];
-    if (status_led == NO_LED || status_led < led_min || status_led >= led_max ||
-        !wl_status_color(wl_current_status, &status_color)) {
-        return true;
-    }
-
-    rgb_matrix_set_color(status_led, status_color.r, status_color.g, status_color.b);
     return true;
 }
 

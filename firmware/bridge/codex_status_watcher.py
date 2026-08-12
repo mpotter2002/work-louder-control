@@ -17,9 +17,11 @@ from pathlib import Path
 
 from work_louder_bridge import (
     CMD_SET_STATUS,
+    SLOT_COUNT,
     STATUSES,
     WorkLouderBridge,
     build_packet,
+    build_slot_packet,
 )
 
 COMPLETE_SECONDS = 8
@@ -107,6 +109,27 @@ class ThreadState:
                 self.error_until = occurred_at + ERROR_SECONDS
 
 
+def thread_status(state: ThreadState, now: float | None = None) -> str:
+    current_time = time.time() if now is None else now
+    if state.error_until > current_time:
+        return "error"
+    if state.needs_input:
+        return "needs-input"
+    if state.active:
+        return "working"
+    if state.complete_until > current_time:
+        return "complete"
+    return "idle"
+
+
+def slot_statuses(states: list[ThreadState], now: float | None = None) -> list[str]:
+    busiest = sorted(states, key=lambda state: state.last_event_at, reverse=True)
+    return [
+        thread_status(state, now) if state is not None else "none"
+        for state in (list(busiest) + [None] * SLOT_COUNT)[:SLOT_COUNT]
+    ]
+
+
 def aggregate_status(states: list[ThreadState], now: float | None = None) -> str:
     current_time = time.time() if now is None else now
     if any(state.error_until > current_time for state in states):
@@ -127,6 +150,7 @@ class RolloutMonitor:
         self.offsets: dict[Path, int] = {}
         self.last_discovery_at = 0.0
         self.last_database_warning_at = 0.0
+        self.thread_states: list[ThreadState] = []
 
     def recent_rollouts(self) -> list[Path]:
         cutoff_ms = int(
@@ -198,7 +222,8 @@ class RolloutMonitor:
             for path, offset in self.offsets.items()
             if path in active_paths
         }
-        return aggregate_status(list(self.states.values()))
+        self.thread_states = list(self.states.values())
+        return aggregate_status(self.thread_states)
 
     def _read_new_events(self, path: Path) -> None:
         try:
@@ -227,26 +252,34 @@ class RolloutMonitor:
 class StatusPublisher:
     def __init__(self) -> None:
         self.last_sent: str | None = None
+        self.last_slots: list[str] = ["none"] * SLOT_COUNT
 
-    def publish(self, status: str) -> bool:
-        if status == self.last_sent:
+    def publish(self, status: str, slots: list[str]) -> bool:
+        if status == self.last_sent and slots == self.last_slots:
             return True
 
         bridge = WorkLouderBridge()
         try:
-            response = bridge.send(
-                build_packet(CMD_SET_STATUS, STATUSES[status], 0)
-            )
+            if status != self.last_sent:
+                response = bridge.send(
+                    build_packet(CMD_SET_STATUS, STATUSES[status], 0)
+                )
+                if response[7] != STATUSES[status]:
+                    raise RuntimeError(
+                        f"Keyboard rejected status {status!r}: response={response[7]}"
+                    )
+                self.last_sent = status
+                logging.info("Codex status -> %s", status)
+
+            for slot, slot_status in enumerate(slots):
+                if slot_status == self.last_slots[slot]:
+                    continue
+                bridge.send(build_slot_packet(slot, STATUSES[slot_status], 0))
+                self.last_slots[slot] = slot_status
+                logging.info("Codex thread %d -> %s", slot + 1, slot_status)
         finally:
             bridge.close()
 
-        if response[7] != STATUSES[status]:
-            raise RuntimeError(
-                f"Keyboard rejected status {status!r}: response={response[7]}"
-            )
-
-        self.last_sent = status
-        logging.info("Codex status -> %s", status)
         return True
 
 
@@ -281,13 +314,15 @@ def main() -> int:
 
     while True:
         status = monitor.refresh()
+        slots = slot_statuses(monitor.thread_states)
         if args.dry_run:
-            if status != last_printed:
-                print(status, flush=True)
-                last_printed = status
+            printable = f"{status} {slots}"
+            if printable != last_printed:
+                print(printable, flush=True)
+                last_printed = printable
         else:
             try:
-                publisher.publish(status)
+                publisher.publish(status, slots)
             except Exception as error:
                 logging.warning("Could not update Work Louder status: %s", error)
 

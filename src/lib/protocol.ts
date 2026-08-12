@@ -74,6 +74,7 @@ export const WL_ACTIONS: Record<number, string> = {
   1: 'Push',
   2: 'Effort down',
   3: 'Effort up',
+  4: 'Launch Figma',
 }
 
 export function packet(...bytes: number[]) {

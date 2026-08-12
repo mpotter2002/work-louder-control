@@ -50,8 +50,9 @@ changes activate their associated lighting profile automatically.
 ### Set thread slot status (`0x04`)
 
 Sets one of the two parallel-agent indicators on the top row of the Codex
-layer. Slot `0` is the top-left key and slot `1` is the key beside it. Slot
-indicators are independent of the Push key status set by `0x01`.
+layer. Slot `0` is the second key from the left and slot `1` is the key beside
+it; the two outer corners of that row have no LED. Slot indicators are
+independent of the aggregate status set by `0x01`.
 
 - Byte 5: slot (`0` or `1`)
 - Byte 6: status, using the same values as `0x01`
@@ -81,9 +82,17 @@ Byte 5 contains the action:
 - `1`: Push key
 - `2`: effort down
 - `3`: effort up
+- `4`: launch Figma
 
-The firmware also emits the existing fallback keycode for each action:
-`F14`, `F17`, or `F18`.
+Actions `1` and `4` also emit a fallback keycode, `F14` and `F15`, so a host
+without the bridge running can still bind them. The effort actions instead tap
+`Ctrl+Alt+Down` and `Ctrl+Alt+Up`, which must be assigned to
+`composer.decreaseReasoningEffort` and `composer.increaseReasoningEffort` in
+Codex under Settings, Keyboard Shortcuts, because those commands ship with no
+default binding.
+
+Run `work_louder_bridge.py listen --run` to have the bridge carry out host
+actions such as opening Figma.
 
 ## Recovery
 

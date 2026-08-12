@@ -25,7 +25,8 @@ describe('profile validation', () => {
     const [firmware, backup] = createStoredProfiles()
     expect(firmware.name).toBe('Codex Candidate 1')
     expect(firmware.layers[0][3]).toBe(0x7e44)
-    expect(firmware.layers[1][2]).toBe(0x7e41)
+    expect(firmware.layers[1][14]).toBe(0x7e41)
+    expect(firmware.layers[1][13]).toBe(0x7e46)
     expect(firmware.encoders[1][1]).toEqual([0x7e42, 0x7e43])
     expect(firmware.lighting[1]).toMatchObject({
       effect: 'breathing',

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 import time
 
@@ -22,7 +23,10 @@ PROTOCOL_VERSION = 0x01
 
 CMD_SET_STATUS = 0x01
 CMD_PING = 0x02
+CMD_SET_SLOT_STATUS = 0x04
 CMD_ACTION = 0x80
+
+SLOT_COUNT = 2
 
 STATUSES = {
     "none": 0,
@@ -38,6 +42,12 @@ ACTIONS = {
     1: "push",
     2: "effort-down",
     3: "effort-up",
+    4: "figma",
+}
+
+# Actions the bridge can carry out on the host, since QMK can only send keys.
+ACTION_COMMANDS = {
+    "figma": ["open", "-a", "Figma"],
 }
 
 
@@ -58,6 +68,12 @@ def build_packet(command: int, value: int = 0, ttl: int = 0) -> bytes:
     packet[4] = command
     packet[5] = value
     packet[6] = ttl
+    return bytes(packet)
+
+
+def build_slot_packet(slot: int, status: int, ttl: int = 0) -> bytes:
+    packet = bytearray(build_packet(CMD_SET_SLOT_STATUS, slot, status))
+    packet[7] = ttl
     return bytes(packet)
 
 
@@ -141,7 +157,32 @@ def command_ping() -> int:
     return 0
 
 
-def command_listen() -> int:
+def command_slot(slot: int, name: str, ttl: int) -> int:
+    bridge = WorkLouderBridge()
+    try:
+        response = bridge.send(build_slot_packet(slot, STATUSES[name], ttl))
+    finally:
+        bridge.close()
+
+    if response[4] != CMD_SET_SLOT_STATUS:
+        print(f"error: keyboard rejected slot {slot}", file=sys.stderr)
+        return 1
+    accepted = STATUS_NAMES.get(response[7], f"unknown-{response[7]}")
+    print(f"Slot {slot} accepted: {accepted}")
+    return 0
+
+
+def run_action(action: str) -> None:
+    command = ACTION_COMMANDS.get(action)
+    if command is None:
+        return
+    try:
+        subprocess.run(command, check=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        print(f"error: could not run {action}: {error}", file=sys.stderr)
+
+
+def command_listen(run: bool) -> int:
     bridge = WorkLouderBridge()
     print("Listening for Work Louder actions. Press Ctrl-C to stop.")
     try:
@@ -150,6 +191,8 @@ def command_listen() -> int:
             if is_protocol_packet(packet) and packet[4] == CMD_ACTION:
                 action = ACTIONS.get(packet[5], f"unknown-{packet[5]}")
                 print(action, flush=True)
+                if run:
+                    run_action(action)
     except KeyboardInterrupt:
         return 0
     finally:
@@ -162,7 +205,15 @@ def parse_args() -> argparse.Namespace:
 
     subparsers.add_parser("list", help="List the matching Raw HID interface.")
     subparsers.add_parser("ping", help="Read firmware protocol status.")
-    subparsers.add_parser("listen", help="Print button and encoder actions.")
+
+    listen_parser = subparsers.add_parser(
+        "listen", help="Print button and encoder actions."
+    )
+    listen_parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Carry out host actions such as launching Figma.",
+    )
 
     status_parser = subparsers.add_parser(
         "status", help="Set the Push key's status color."
@@ -176,6 +227,20 @@ def parse_args() -> argparse.Namespace:
         metavar="SECONDS",
         help="Return to the breathing effect after 0-255 seconds.",
     )
+
+    slot_parser = subparsers.add_parser(
+        "slot", help="Set one thread indicator's color."
+    )
+    slot_parser.add_argument("slot", type=int, choices=range(SLOT_COUNT))
+    slot_parser.add_argument("status", choices=STATUSES)
+    slot_parser.add_argument(
+        "--ttl",
+        type=int,
+        default=0,
+        choices=range(0, 256),
+        metavar="SECONDS",
+        help="Clear the indicator after 0-255 seconds.",
+    )
     return parser.parse_args()
 
 
@@ -188,8 +253,10 @@ def main() -> int:
             return command_status(args.status, args.ttl)
         if args.command == "ping":
             return command_ping()
+        if args.command == "slot":
+            return command_slot(args.slot, args.status, args.ttl)
         if args.command == "listen":
-            return command_listen()
+            return command_listen(args.run)
     except (RuntimeError, TimeoutError, hid.HIDException) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

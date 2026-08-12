@@ -8,7 +8,7 @@ This repository contains:
 - A browser configurator for four layers, two encoders, profiles, VIA
   assignments, status testing, and diagnostics.
 - A QMK keymap with semantic Codex actions and agent-status lighting.
-- A macOS bridge that mirrors local Codex task state onto the Push key.
+- A macOS bridge that mirrors local Codex task state onto the status keys.
 - The exact tested `v0.1.0` HEX image and its SHA-256 checksum.
 
 **Configurator:** https://work-louder-control.vercel.app

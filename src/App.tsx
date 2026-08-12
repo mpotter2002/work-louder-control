@@ -1164,7 +1164,7 @@ function StatusView({
           <div className="slot-indicators">
             <div className="slot-heading">
               <strong>Thread indicators</strong>
-              <span>The top two keys track parallel agents</span>
+              <span>The two lit top-row keys track parallel agents</span>
             </div>
             {slotStatuses.map((slotStatus, slot) => (
               <div className="slot-row" key={WL_SLOT_LABELS[slot]}>
