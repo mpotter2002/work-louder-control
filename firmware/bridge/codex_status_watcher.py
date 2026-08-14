@@ -257,6 +257,17 @@ class StatusPublisher:
         self.last_slots: list[str] = ["none"] * SLOT_COUNT
         self.last_full_sync_at = float("-inf")
         self.push_repo = push_repo
+        self.bridge: WorkLouderBridge | None = None
+
+    def get_bridge(self) -> WorkLouderBridge:
+        if self.bridge is None:
+            self.bridge = WorkLouderBridge()
+        return self.bridge
+
+    def reset_bridge(self) -> None:
+        if self.bridge is not None:
+            self.bridge.close()
+            self.bridge = None
 
     def publish(self, status: str, slots: list[str], run_actions: bool = False) -> bool:
         force_sync = time.monotonic() - self.last_full_sync_at >= FULL_SYNC_SECONDS
@@ -268,46 +279,43 @@ class StatusPublisher:
         ):
             return True
 
-        bridge = WorkLouderBridge()
-        try:
-            status_changed = status != self.last_sent
-            if status_changed or force_sync:
-                response = bridge.send(
-                    build_packet(CMD_SET_STATUS, STATUSES[status], 0)
+        bridge = self.get_bridge()
+        status_changed = status != self.last_sent
+        if status_changed or force_sync:
+            response = bridge.send(
+                build_packet(CMD_SET_STATUS, STATUSES[status], 0)
+            )
+            if response[7] != STATUSES[status]:
+                raise RuntimeError(
+                    f"Keyboard rejected status {status!r}: response={response[7]}"
                 )
-                if response[7] != STATUSES[status]:
-                    raise RuntimeError(
-                        f"Keyboard rejected status {status!r}: response={response[7]}"
-                    )
-                self.last_sent = status
-                if status_changed:
-                    logging.info("Codex status -> %s", status)
+            self.last_sent = status
+            if status_changed:
+                logging.info("Codex status -> %s", status)
 
-            for slot, slot_status in enumerate(slots):
-                slot_changed = slot_status != self.last_slots[slot]
-                if not slot_changed and not force_sync:
-                    continue
-                response = bridge.send(
-                    build_slot_packet(slot, STATUSES[slot_status], 0)
+        for slot, slot_status in enumerate(slots):
+            slot_changed = slot_status != self.last_slots[slot]
+            if not slot_changed and not force_sync:
+                continue
+            response = bridge.send(
+                build_slot_packet(slot, STATUSES[slot_status], 0)
+            )
+            if response[7] != STATUSES[slot_status]:
+                raise RuntimeError(
+                    f"Keyboard rejected thread {slot + 1} status "
+                    f"{slot_status!r}: response={response[7]}"
                 )
-                if response[7] != STATUSES[slot_status]:
-                    raise RuntimeError(
-                        f"Keyboard rejected thread {slot + 1} status "
-                        f"{slot_status!r}: response={response[7]}"
-                    )
-                self.last_slots[slot] = slot_status
-                if slot_changed:
-                    logging.info("Codex thread %d -> %s", slot + 1, slot_status)
+            self.last_slots[slot] = slot_status
+            if slot_changed:
+                logging.info("Codex thread %d -> %s", slot + 1, slot_status)
 
-            if force_sync:
-                self.last_full_sync_at = time.monotonic()
+        if force_sync:
+            self.last_full_sync_at = time.monotonic()
 
-            if run_actions:
-                for action in bridge.take_actions():
-                    logging.info("Work Louder action: %s", action)
-                    run_action(action, self.push_repo)
-        finally:
-            bridge.close()
+        if run_actions:
+            for action in bridge.take_actions():
+                logging.info("Work Louder action: %s", action)
+                run_action(action, self.push_repo)
 
         return True
 
@@ -363,6 +371,7 @@ def main() -> int:
             try:
                 publisher.publish(status, slots, args.run_actions)
             except Exception as error:
+                publisher.reset_bridge()
                 logging.warning("Could not update Work Louder status: %s", error)
 
         if args.once:

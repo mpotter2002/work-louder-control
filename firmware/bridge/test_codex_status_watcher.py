@@ -203,8 +203,8 @@ class StatusPublisherTests(unittest.TestCase):
             clock.return_value = watcher.FULL_SYNC_SECONDS + 0.1
             publisher.publish("working", ["working", "idle"])
 
-        self.assertEqual(len(bridges), 2)
-        self.assertEqual([len(bridge.packets) for bridge in bridges], [3, 3])
+        self.assertEqual(len(bridges), 1)
+        self.assertEqual(len(bridges[0].packets), 6)
 
 
 if __name__ == "__main__":
