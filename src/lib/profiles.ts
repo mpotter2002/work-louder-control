@@ -147,7 +147,7 @@ const CURRENT_LAYERS = [
     'G(KC_J)',
     'LSG(KC_E)',
     'WL_FIGMA',
-    'WL_VOICE',
+    'LCA(KC_D)',
     'WL_PUSH',
     'TO(0)',
   ],

@@ -45,7 +45,7 @@ describe('keycode parsing and round-trip', () => {
       value: 0x0a08,
       shortcut: '⇧⌘E',
     })
-    expect(assignmentLabel(CUSTOM_ACTIONS.WL_VOICE, 'codex')).toBe('Dictation')
+    expect(assignmentLabel(0x0507, 'codex')).toBe('Voice Dictation')
   })
 
   it('rejects invalid or out-of-range values', () => {

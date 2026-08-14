@@ -40,12 +40,12 @@ describe('profile validation', () => {
       'G(J)',
       'SG(E)',
       'WL_FIGMA',
-      'WL_VOICE',
+      'CA(D)',
       'WL_PUSH',
       'TO(0)',
     ])
     expect(firmware.layers[1][14]).toBe(0x7e41)
-    expect(firmware.layers[1][13]).toBe(0x7e46)
+    expect(firmware.layers[1][13]).toBe(0x0507)
     expect(firmware.encoders[1][1]).toEqual([0x7e42, 0x7e43])
     expect(firmware.lighting[0]).toEqual({
       effect: 'orbit',

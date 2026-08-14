@@ -26,3 +26,7 @@ output
 *.sln
 *.sw?
 .vercel
+
+# Stray bundled asset dumps in repo root
+/codex-micro-*.js
+/keyboard-shortcuts-*.js

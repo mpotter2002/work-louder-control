@@ -13,7 +13,7 @@ enum layers {
 };
 
 enum custom_keycodes {
-    WL_PET = SAFE_RANGE,
+    WL_PET = 0x7E40,
     WL_PUSH,
     WL_EFFORT_DOWN,
     WL_EFFORT_UP,
@@ -63,6 +63,8 @@ enum wl_action {
 #define WL_PROTOCOL_VERSION 0x01
 #define WL_STATUS_ROW 3
 #define WL_STATUS_COL 2
+#define WL_VOICE_ROW 3
+#define WL_VOICE_COL 1
 #define WL_REPORT_SIZE 32
 #define WL_MAINTENANCE_HOLD_MS 5000
 #define WL_LIGHTING_LAYER_COUNT 4
@@ -79,6 +81,7 @@ static uint32_t wl_status_timeout;
 static uint32_t wl_maintenance_started;
 static uint32_t wl_perimeter_frame_started;
 static uint8_t wl_active_lighting_layer = L_FIGMA;
+static bool wl_voice_held = false;
 
 static const uint8_t wl_slot_positions[WL_SLOT_COUNT][2] = {
     {1, 0},
@@ -148,7 +151,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         WL_SKILLS,        LCTL(LALT(KC_F)), WL_MCP,           WL_MAINTENANCE,
         WL_SIDE_CHAT,     LGUI(KC_T),       LGUI(KC_N),       WL_PET,
         WL_SIDE_CHAT,     WL_SIDE_CHAT,      LGUI(KC_J),       LSFT(LGUI(KC_E)),
-        WL_FIGMA,         WL_VOICE,         WL_PUSH,          TO(L_FIGMA)
+        WL_FIGMA,         LCTL(LALT(KC_D)), WL_PUSH,          TO(L_FIGMA)
     ),
     [L_PC] = LAYOUT(
         LCTL(KC_T),       KC_V,             KC_P,             WL_MAINTENANCE,
@@ -443,6 +446,10 @@ static void wl_send_action(uint8_t action) {
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (record->event.key.row == WL_VOICE_ROW && record->event.key.col == WL_VOICE_COL) {
+        wl_voice_held = record->event.pressed;
+    }
+
     switch (keycode) {
         case WL_PET:
             if (record->event.pressed) {
@@ -475,9 +482,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
         case WL_VOICE:
             if (record->event.pressed) {
-                tap_code(KC_LGUI);
-                wait_ms(80);
-                tap_code(KC_LGUI);
+                tap_code16(LCTL(LALT(KC_D)));
             }
             return false;
         case WL_SKILLS:
@@ -615,6 +620,17 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
         rgb_t color = wl_profile_color(lighting, mix, brightness);
         rgb_matrix_set_color(led_index, color.r, color.g, color.b);
+    }
+
+    uint8_t voice_led = g_led_config.matrix_co[WL_VOICE_ROW][WL_VOICE_COL];
+    if (wl_active_lighting_layer == L_CODEX && voice_led != NO_LED &&
+        voice_led >= led_min && voice_led < led_max) {
+        if (wl_voice_held) {
+            rgb_t voice_color = wl_scale_rgb((rgb_t){255, 255, 255}, WL_STATUS_BRIGHTNESS);
+            rgb_matrix_set_color(voice_led, voice_color.r, voice_color.g, voice_color.b);
+        } else {
+            rgb_matrix_set_color(voice_led, 0, 0, 0);
+        }
     }
 
     rgb_t status_color;
