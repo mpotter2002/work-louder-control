@@ -28,6 +28,7 @@ from work_louder_bridge import (
 COMPLETE_SECONDS = 8
 ERROR_SECONDS = 12
 ROLLOUT_LOOKBACK_HOURS = 48
+FULL_SYNC_SECONDS = 2
 
 INPUT_PATTERNS = (
     re.compile(r"\?$"),
@@ -126,7 +127,7 @@ def thread_status(state: ThreadState, now: float | None = None) -> str:
 def slot_statuses(states: list[ThreadState], now: float | None = None) -> list[str]:
     busiest = sorted(states, key=lambda state: state.last_event_at, reverse=True)
     return [
-        thread_status(state, now) if state is not None else "none"
+        thread_status(state, now) if state is not None else "idle"
         for state in (list(busiest) + [None] * SLOT_COUNT)[:SLOT_COUNT]
     ]
 
@@ -254,14 +255,22 @@ class StatusPublisher:
     def __init__(self) -> None:
         self.last_sent: str | None = None
         self.last_slots: list[str] = ["none"] * SLOT_COUNT
+        self.last_full_sync_at = float("-inf")
 
     def publish(self, status: str, slots: list[str], run_actions: bool = False) -> bool:
-        if status == self.last_sent and slots == self.last_slots and not run_actions:
+        force_sync = time.monotonic() - self.last_full_sync_at >= FULL_SYNC_SECONDS
+        if (
+            status == self.last_sent
+            and slots == self.last_slots
+            and not run_actions
+            and not force_sync
+        ):
             return True
 
         bridge = WorkLouderBridge()
         try:
-            if status != self.last_sent:
+            status_changed = status != self.last_sent
+            if status_changed or force_sync:
                 response = bridge.send(
                     build_packet(CMD_SET_STATUS, STATUSES[status], 0)
                 )
@@ -270,14 +279,27 @@ class StatusPublisher:
                         f"Keyboard rejected status {status!r}: response={response[7]}"
                     )
                 self.last_sent = status
-                logging.info("Codex status -> %s", status)
+                if status_changed:
+                    logging.info("Codex status -> %s", status)
 
             for slot, slot_status in enumerate(slots):
-                if slot_status == self.last_slots[slot]:
+                slot_changed = slot_status != self.last_slots[slot]
+                if not slot_changed and not force_sync:
                     continue
-                bridge.send(build_slot_packet(slot, STATUSES[slot_status], 0))
+                response = bridge.send(
+                    build_slot_packet(slot, STATUSES[slot_status], 0)
+                )
+                if response[7] != STATUSES[slot_status]:
+                    raise RuntimeError(
+                        f"Keyboard rejected thread {slot + 1} status "
+                        f"{slot_status!r}: response={response[7]}"
+                    )
                 self.last_slots[slot] = slot_status
-                logging.info("Codex thread %d -> %s", slot + 1, slot_status)
+                if slot_changed:
+                    logging.info("Codex thread %d -> %s", slot + 1, slot_status)
+
+            if force_sync:
+                self.last_full_sync_at = time.monotonic()
 
             if run_actions:
                 for action in bridge.take_actions():

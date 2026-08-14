@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   VIA_COMMANDS,
   WL_LIGHTING_EFFECTS,
+  WL_LIGHTING_MAX_BRIGHTNESS,
   WlClient,
   decodeViaKeycode,
   encodeViaGetEncoder,
@@ -70,5 +71,60 @@ describe('WL protocol', () => {
         speed: 104,
       }).slice(0, 13)],
     ).toEqual([0xfe, 0x57, 0x4c, 0x01, 0x03, 1, 2, 0, 255, 132, 170, 255, 104])
+  })
+
+  it('encodes the firmware default Codex lighting exactly', () => {
+    expect(
+      [...encodeWlLightingProfile(1, {
+        effect: 'orbit',
+        primaryColor: '#00c8ff',
+        secondaryColor: '#8a35ff',
+        brightness: 150,
+        speed: 88,
+      }).slice(5, 13)],
+    ).toEqual([1, 2, 137, 255, 150, 188, 202, 88])
+  })
+
+  it('clamps profile brightness to the keyboard lighting limit', () => {
+    expect(
+      encodeWlLightingProfile(0, {
+        effect: 'static',
+        primaryColor: '#ffffff',
+        secondaryColor: '#000000',
+        brightness: 255,
+        speed: 96,
+      })[9],
+    ).toBe(WL_LIGHTING_MAX_BRIGHTNESS)
+  })
+
+  it('accepts a lighting acknowledgement and handles a rejection without timing out', async () => {
+    const settings = {
+      effect: 'wave' as const,
+      primaryColor: '#ff742f',
+      secondaryColor: '#ffee5f',
+      brightness: 104,
+      speed: 78,
+    }
+    const acceptedTransport = {
+      request: async (data: Uint8Array, predicate: (response: Uint8Array) => boolean) => {
+        const response = data.slice()
+        expect(predicate(response)).toBe(true)
+        return response
+      },
+    }
+    const rejectedTransport = {
+      request: async (_data: Uint8Array, predicate: (response: Uint8Array) => boolean) => {
+        const response = encodeWl(0xff)
+        expect(predicate(response)).toBe(true)
+        return response
+      },
+    }
+
+    await expect(
+      new WlClient(acceptedTransport as never).setLightingProfile(0, settings),
+    ).resolves.toBeUndefined()
+    await expect(
+      new WlClient(rejectedTransport as never).setLightingProfile(0, settings),
+    ).rejects.toThrow('Device rejected the lighting profile')
   })
 })

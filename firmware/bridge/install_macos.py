@@ -54,7 +54,7 @@ def install() -> None:
     payload = {
         "Label": LABEL,
         "ProgramArguments": [
-            str(Path(sys.executable).resolve()),
+            sys.executable,
             str(watcher),
             "--database",
             str(database),

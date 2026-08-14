@@ -616,8 +616,9 @@ main {
 
 .assignment-groups {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(58px, 1fr));
   margin-bottom: 10px;
+  overflow-x: auto;
   border-bottom: 1px solid var(--line);
 }
 
@@ -630,8 +631,9 @@ main {
   border: 0;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .assignment-groups button.active {
@@ -671,22 +673,51 @@ main {
 
 .assignment-list > button > span {
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .assignment-list strong {
-  overflow: hidden;
   color: var(--ink);
   font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 15px;
 }
 
 .assignment-list small {
   color: var(--muted);
+  font-size: 9px;
+  line-height: 13px;
+}
+
+.assignment-list kbd {
+  flex: 0 0 auto;
+  max-width: 88px;
+  padding: 4px 6px;
+  overflow: hidden;
+  color: #425159;
+  background: #edf1f2;
+  border: 1px solid #d7dee0;
+  border-bottom-width: 2px;
+  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignment-list > button.active kbd {
+  color: #255f57;
+  background: #fff;
+  border-color: #aad7d0;
+}
+
+.assignment-empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .numeric-editor {
@@ -694,7 +725,19 @@ main {
   padding-top: 15px;
 }
 
-.numeric-editor > label {
+.numeric-editor summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.numeric-editor form {
+  padding-top: 10px;
+}
+
+.numeric-editor form > label {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -709,7 +752,7 @@ main {
   display: inline-flex;
 }
 
-.numeric-editor > div {
+.numeric-editor form > div {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 7px;

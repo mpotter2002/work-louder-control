@@ -7,6 +7,7 @@ import {
   importProfiles,
   isProfile,
 } from './profiles'
+import { formatKeycode } from './keycodes'
 
 beforeEach(() => {
   vi.stubGlobal('crypto', { randomUUID: () => 'test-id' })
@@ -23,15 +24,42 @@ describe('profile validation', () => {
 
   it('starts with a profile matching the flashed firmware', () => {
     const [firmware, backup] = createStoredProfiles()
-    expect(firmware.name).toBe('Codex Candidate 1')
+    expect(firmware.name).toBe('Codex Candidate 2')
     expect(firmware.layers[0][3]).toBe(0x7e44)
+    expect(firmware.layers[1].map(formatKeycode)).toEqual([
+      'WL_SKILLS',
+      'CA(F)',
+      'WL_MCP',
+      'WL_MAINTENANCE',
+      'WL_SIDE_CHAT',
+      'G(T)',
+      'G(N)',
+      'WL_PET',
+      'WL_SIDE_CHAT',
+      'WL_SIDE_CHAT',
+      'G(J)',
+      'SG(E)',
+      'WL_FIGMA',
+      'WL_VOICE',
+      'WL_PUSH',
+      'TO(0)',
+    ])
     expect(firmware.layers[1][14]).toBe(0x7e41)
     expect(firmware.layers[1][13]).toBe(0x7e46)
     expect(firmware.encoders[1][1]).toEqual([0x7e42, 0x7e43])
+    expect(firmware.lighting[0]).toEqual({
+      effect: 'orbit',
+      primaryColor: '#ff5a1f',
+      secondaryColor: '#ff00a8',
+      brightness: 142,
+      speed: 74,
+    })
     expect(firmware.lighting[1]).toMatchObject({
-      effect: 'breathing',
-      primaryColor: '#14b8ff',
-      secondaryColor: '#8b5cf6',
+      effect: 'orbit',
+      primaryColor: '#00c8ff',
+      secondaryColor: '#ff3b9d',
+      brightness: 150,
+      speed: 86,
     })
     expect(backup.name).toBe('Creator Micro Backup')
     expect(isProfile(createFirmwareProfile())).toBe(true)
@@ -50,7 +78,7 @@ describe('profile validation', () => {
     delete envelope.profiles[0].lighting
     const [profile] = importProfiles(JSON.stringify(envelope))
     expect(profile.lighting).toHaveLength(4)
-    expect(profile.lighting[1].effect).toBe('breathing')
+    expect(profile.lighting[1].effect).toBe('orbit')
   })
 
   it('rejects malformed profile shapes', () => {

@@ -29,6 +29,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   ASSIGNMENT_GROUPS,
+  assignmentLabel,
+  assignmentOption,
   formatKeycode,
   keycodeDescription,
   parseKeycode,
@@ -50,6 +52,7 @@ import {
   ViaClient,
   WL_ACTIONS,
   WL_LIGHTING_EFFECTS,
+  WL_LIGHTING_MAX_BRIGHTNESS,
   WL_SLOT_COUNT,
   WL_SLOT_LABELS,
   WL_STATUSES,
@@ -450,7 +453,7 @@ function App() {
       }
       await wlRef.current.setLightingProfile(layer, settings)
       setDiagnostics((current) => ({ ...current, lightingProfiles: true }))
-      addEvent('success', `Previewed ${LAYER_NAMES[layer]} lighting`)
+      addEvent('success', `Applied ${LAYER_NAMES[layer]} lighting profile`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Lighting preview failed'
       setStatusError(message)
@@ -753,6 +756,7 @@ function LayoutView({
         <MicroBoard
           keycodes={profile.layers[activeLayer]}
           encoders={profile.encoders[activeLayer]}
+          activeLayer={activeLayer}
           selected={selected}
           setSelected={setSelected}
         />
@@ -761,6 +765,7 @@ function LayoutView({
       <AssignmentPanel
         selected={selected}
         keycode={selectedKeycode}
+        activeLayer={activeLayer}
         assignKeycode={assignKeycode}
       />
     </div>
@@ -770,11 +775,13 @@ function LayoutView({
 function MicroBoard({
   keycodes,
   encoders,
+  activeLayer,
   selected,
   setSelected,
 }: {
   keycodes: number[]
   encoders: [number, number][]
+  activeLayer: number
   selected: EditorTarget
   setSelected: (target: EditorTarget) => void
 }) {
@@ -800,7 +807,7 @@ function MicroBoard({
               title={`Encoder ${index + 1} counterclockwise`}
             >
               <RotateCcw size={15} />
-              <span>{formatKeycode(encoder[0])}</span>
+              <span>{activeLayer === 1 ? assignmentLabel(encoder[0], 'codex') : formatKeycode(encoder[0])}</span>
             </button>
             <div className="encoder-knob" aria-hidden="true">
               <span />
@@ -818,7 +825,7 @@ function MicroBoard({
               title={`Encoder ${index + 1} clockwise`}
             >
               <RotateCw size={15} />
-              <span>{formatKeycode(encoder[1])}</span>
+              <span>{activeLayer === 1 ? assignmentLabel(encoder[1], 'codex') : formatKeycode(encoder[1])}</span>
             </button>
           </div>
         ))}
@@ -832,7 +839,7 @@ function MicroBoard({
             onClick={() => setSelected({ kind: 'key', index })}
             title={`Row ${Math.floor(index / 4) + 1}, column ${(index % 4) + 1}: ${keycodeDescription(keycode)}`}
           >
-            <span>{formatKeycode(keycode)}</span>
+            <span>{activeLayer === 1 ? assignmentLabel(keycode, 'codex') : formatKeycode(keycode)}</span>
             <small>{Math.floor(index / 4) + 1}.{(index % 4) + 1}</small>
           </button>
         ))}
@@ -844,18 +851,25 @@ function MicroBoard({
 function AssignmentPanel({
   selected,
   keycode,
+  activeLayer,
   assignKeycode,
 }: {
   selected: EditorTarget
   keycode: number
+  activeLayer: number
   assignKeycode: (keycode: number) => void
 }) {
-  const [group, setGroup] = useState(ASSIGNMENT_GROUPS[0].id)
+  const [group, setGroup] = useState(activeLayer === 1 ? 'codex' : 'keys')
   const [query, setQuery] = useState('')
   const [numeric, setNumeric] = useState(toHex(keycode))
   const activeGroup = ASSIGNMENT_GROUPS.find((item) => item.id === group) ?? ASSIGNMENT_GROUPS[0]
+  const currentOption = assignmentOption(keycode, activeLayer === 1 ? 'codex' : group)
 
   useEffect(() => setNumeric(toHex(keycode)), [keycode])
+  useEffect(() => {
+    setGroup(activeLayer === 1 ? 'codex' : 'keys')
+    setQuery('')
+  }, [activeLayer])
 
   const options = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -863,7 +877,9 @@ function AssignmentPanel({
       (item) =>
         !normalized ||
         item.label.toLowerCase().includes(normalized) ||
-        item.code.toLowerCase().includes(normalized),
+        item.code.toLowerCase().includes(normalized) ||
+        item.description?.toLowerCase().includes(normalized) ||
+        item.shortcut?.toLowerCase().includes(normalized),
     )
   }, [activeGroup, query])
 
@@ -883,8 +899,8 @@ function AssignmentPanel({
 
       <div className="current-assignment">
         <span>Current assignment</span>
-        <strong>{formatKeycode(keycode)}</strong>
-        <small>{keycodeDescription(keycode)}</small>
+        <strong>{currentOption?.label ?? formatKeycode(keycode)}</strong>
+        <small>{currentOption?.description ?? keycodeDescription(keycode)}</small>
       </div>
 
       <label className="search-field">
@@ -915,47 +931,54 @@ function AssignmentPanel({
       </div>
 
       <div className="assignment-list">
-        {options.map((option) => (
-          <button
-            key={option.code}
-            type="button"
-            className={option.value === keycode ? 'active' : ''}
-            onClick={() => assignKeycode(option.value)}
-          >
-            <span>
-              <strong>{option.label}</strong>
-              <small>{option.code}</small>
-            </span>
-            {option.value === keycode && <Check size={16} />}
-          </button>
-        ))}
+        {options.length ? (
+          options.map((option) => (
+            <button
+              key={option.code}
+              type="button"
+              className={option.value === keycode ? 'active' : ''}
+              onClick={() => assignKeycode(option.value)}
+            >
+              <span>
+                <strong>{option.label}</strong>
+                <small>{option.description ?? option.code}</small>
+              </span>
+              <kbd>{option.shortcut ?? option.code}</kbd>
+              {option.value === keycode && <Check size={16} />}
+            </button>
+          ))
+        ) : (
+          <div className="assignment-empty">No matching actions</div>
+        )}
       </div>
 
-      <form
-        className="numeric-editor"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const parsed = parseKeycode(numeric)
-          if (parsed !== null) assignKeycode(parsed)
-        }}
-      >
-        <label>
-          Numeric keycode
-          <span className="help-tip" title="Unknown and custom 16-bit keycodes are preserved exactly">
-            <CircleHelp size={14} />
-          </span>
-        </label>
-        <div>
-          <input
-            value={numeric}
-            onChange={(event) => setNumeric(event.target.value)}
-            aria-label="Numeric keycode"
-          />
-          <button className="button secondary compact" type="submit">
-            Set
-          </button>
-        </div>
-      </form>
+      <details className="numeric-editor">
+        <summary>Advanced keycode</summary>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            const parsed = parseKeycode(numeric)
+            if (parsed !== null) assignKeycode(parsed)
+          }}
+        >
+          <label>
+            Numeric keycode
+            <span className="help-tip" title="Unknown and custom 16-bit keycodes are preserved exactly">
+              <CircleHelp size={14} />
+            </span>
+          </label>
+          <div>
+            <input
+              value={numeric}
+              onChange={(event) => setNumeric(event.target.value)}
+              aria-label="Numeric keycode"
+            />
+            <button className="button secondary compact" type="submit">
+              Set
+            </button>
+          </div>
+        </form>
+      </details>
     </aside>
   )
 }
@@ -1164,7 +1187,7 @@ function StatusView({
           <div className="slot-indicators">
             <div className="slot-heading">
               <strong>Thread indicators</strong>
-              <span>The two lit top-row keys track parallel agents</span>
+              <span>The two dedicated RGB keys track parallel agents</span>
             </div>
             {slotStatuses.map((slotStatus, slot) => (
               <div className="slot-row" key={WL_SLOT_LABELS[slot]}>
@@ -1255,7 +1278,7 @@ function StatusView({
                 disabled={!canUseDevice || !lightingSupported}
                 onClick={() => onPreviewLighting(activeLayer, lighting)}
               >
-                Preview
+                Apply lighting
               </button>
             </div>
 
@@ -1316,13 +1339,20 @@ function StatusView({
             <div className="lighting-slider">
               <label htmlFor="lighting-brightness">
                 <span>Brightness</span>
-                <strong>{Math.round((lighting.brightness / 255) * 100)}%</strong>
+                <strong>
+                  {Math.round(
+                    (Math.min(lighting.brightness, WL_LIGHTING_MAX_BRIGHTNESS) /
+                      WL_LIGHTING_MAX_BRIGHTNESS) *
+                      100,
+                  )}
+                  %
+                </strong>
               </label>
               <input
                 id="lighting-brightness"
                 type="range"
                 min="8"
-                max="150"
+                max={WL_LIGHTING_MAX_BRIGHTNESS}
                 value={lighting.brightness}
                 onChange={(event) => updateSetting('brightness', Number(event.target.value))}
               />

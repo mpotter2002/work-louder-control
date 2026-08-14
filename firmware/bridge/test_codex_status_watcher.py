@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import Mock, patch
 
 import codex_status_watcher as watcher
 
@@ -73,6 +74,16 @@ class ThreadStateTests(unittest.TestCase):
 
 
 class AggregationTests(unittest.TestCase):
+    def test_empty_agent_slots_are_visibly_idle(self):
+        now = 100
+        active = watcher.ThreadState(active=True, last_event_at=99)
+
+        self.assertEqual(watcher.slot_statuses([], now), ["idle", "idle"])
+        self.assertEqual(
+            watcher.slot_statuses([active], now),
+            ["working", "idle"],
+        )
+
     def test_priority(self):
         now = 100
         self.assertEqual(watcher.aggregate_status([], now), "idle")
@@ -124,6 +135,46 @@ class DiscoveryTests(unittest.TestCase):
 
             monitor = watcher.RolloutMonitor(root / "state_5.sqlite")
             self.assertEqual(monitor.filesystem_rollouts(), [rollout])
+
+
+class StatusPublisherTests(unittest.TestCase):
+    def test_periodically_resends_unchanged_status_after_device_reboot(self):
+        bridges = []
+
+        class FakeBridge:
+            def __init__(self):
+                self.packets = []
+                bridges.append(self)
+
+            def send(self, packet):
+                self.packets.append(packet)
+                response = bytearray(watcher.build_packet(0, 0, 0))
+                response[7] = (
+                    packet[6]
+                    if packet[4] == watcher.build_slot_packet(0, 0)[4]
+                    else packet[5]
+                )
+                return response
+
+            def take_actions(self):
+                return []
+
+            def close(self):
+                pass
+
+        clock = Mock(return_value=0)
+        with (
+            patch.object(watcher, "WorkLouderBridge", FakeBridge),
+            patch.object(watcher.time, "monotonic", clock),
+        ):
+            publisher = watcher.StatusPublisher()
+            publisher.publish("working", ["working", "idle"])
+            publisher.publish("working", ["working", "idle"])
+            clock.return_value = watcher.FULL_SYNC_SECONDS + 0.1
+            publisher.publish("working", ["working", "idle"])
+
+        self.assertEqual(len(bridges), 2)
+        self.assertEqual([len(bridge.packets) for bridge in bridges], [3, 3])
 
 
 if __name__ == "__main__":

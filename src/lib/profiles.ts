@@ -134,18 +134,18 @@ const CURRENT_LAYERS = [
     'TO(1)',
   ],
   [
-    'LCA(KC_S)',
-    'KC_NO',
-    'LCA(KC_M)',
+    'WL_SKILLS',
+    'LCA(KC_F)',
+    'WL_MCP',
     'WL_MAINTENANCE',
-    'C(KC_GRV)',
-    'G(KC_N)',
-    'G(KC_K)',
-    'WL_PET',
-    'LAG(KC_S)',
+    'WL_SIDE_CHAT',
     'G(KC_T)',
-    'KC_ENT',
-    'KC_ESC',
+    'G(KC_N)',
+    'WL_PET',
+    'WL_SIDE_CHAT',
+    'WL_SIDE_CHAT',
+    'G(KC_J)',
+    'LSG(KC_E)',
     'WL_FIGMA',
     'WL_VOICE',
     'WL_PUSH',
@@ -206,32 +206,32 @@ const CURRENT_ENCODERS = [
 
 const DEFAULT_LIGHTING: LightingSettings[] = [
   {
-    effect: 'static',
-    primaryColor: '#f24e1e',
-    secondaryColor: '#a259ff',
-    brightness: 118,
-    speed: 96,
-  },
-  {
-    effect: 'breathing',
-    primaryColor: '#14b8ff',
-    secondaryColor: '#8b5cf6',
-    brightness: 132,
-    speed: 104,
+    effect: 'orbit',
+    primaryColor: '#ff5a1f',
+    secondaryColor: '#ff00a8',
+    brightness: 142,
+    speed: 74,
   },
   {
     effect: 'orbit',
-    primaryColor: '#22c6a8',
-    secondaryColor: '#2f80ff',
-    brightness: 118,
-    speed: 112,
+    primaryColor: '#00c8ff',
+    secondaryColor: '#ff3b9d',
+    brightness: 150,
+    speed: 86,
   },
   {
-    effect: 'wave',
-    primaryColor: '#f59e0b',
-    secondaryColor: '#ec4899',
-    brightness: 112,
-    speed: 96,
+    effect: 'orbit',
+    primaryColor: '#1fe87a',
+    secondaryColor: '#2068ff',
+    brightness: 146,
+    speed: 102,
+  },
+  {
+    effect: 'orbit',
+    primaryColor: '#ffc400',
+    secondaryColor: '#ff2f7d',
+    brightness: 144,
+    speed: 94,
   },
 ]
 
@@ -273,10 +273,10 @@ function createProfile(
   }
 }
 
-export function createFirmwareProfile(name = 'Codex Candidate 1'): Profile {
+export function createFirmwareProfile(name = 'Codex Candidate 2'): Profile {
   return createProfile(
     name,
-    'Matches the firmware flashed August 11, 2026',
+    'Current firmware candidate built August 14, 2026',
     CURRENT_LAYERS,
     CURRENT_ENCODERS,
     ARCHIVED_MACROS,

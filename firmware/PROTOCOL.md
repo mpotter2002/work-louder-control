@@ -37,6 +37,11 @@ The response returns the current status in byte 5.
 Updates one of the four runtime layer-lighting profiles. This command does not
 write EEPROM.
 
+The perimeter maps the dashboard's `0-150` brightness range onto the LEDs'
+full output range and crossfades each orbit head between neighboring LEDs for
+smooth motion through the acrylic diffuser. The crossfade uses overlapping
+brightness so the moving segment does not visibly dim between LED positions.
+
 - Byte 5: layer (`0` Figma, `1` Codex, `2` PC, `3` Extra)
 - Byte 6: effect (`0` static gradient, `1` breathing, `2` orbit, `3` wave,
   `4` twinkle)
@@ -49,10 +54,12 @@ changes activate their associated lighting profile automatically.
 
 ### Set thread slot status (`0x04`)
 
-Sets one of the two parallel-agent indicators on the top row of the Codex
-layer. Slot `0` is the second key from the left and slot `1` is the key beside
-it; the two outer corners of that row have no LED. Slot indicators are
-independent of the aggregate status set by `0x01`.
+Sets one of the two parallel-agent indicators on the Codex layer. Slot `0`
+uses row 2, key 1 and slot `1` uses row 3, key 1. These switches do not
+register key presses on the current board, but their RGB LEDs remain usable.
+Slot indicators are independent of the aggregate status set by `0x01`.
+An unassigned slot is displayed as idle instead of exposing the active
+lighting profile underneath it.
 
 - Byte 5: slot (`0` or `1`)
 - Byte 6: status, using the same values as `0x01`
@@ -84,9 +91,15 @@ Byte 5 contains the action:
 - `3`: effort up
 - `4`: launch Figma
 
-Two Codex commands ship with no default binding and are assigned in
-`~/.codex/keybindings.json`: `openSkills` on `Ctrl+Alt+S` and `mcpSettings` on
-`Ctrl+Alt+M`, matching the two upper keys of the Codex layer.
+The Codex control layout uses these assigned shortcuts:
+
+- Skills: `Ctrl+Alt+S`
+- MCP: `Ctrl+Alt+M`
+- Search Chats: `Ctrl+Alt+F`
+- File Tree panel: `Command+Shift+E`
+- Dictation hold: `Ctrl+Alt+D`, held for the full physical button press
+- Side Chat: `Option+Command+S`, including the former Review button
+- New Browser Tab: `Command+T`
 
 Actions `1` and `4` also emit a fallback keycode, `F14` and `F15`, so a host
 without the bridge running can still bind them. The effort actions instead tap

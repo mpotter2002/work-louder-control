@@ -1,5 +1,8 @@
-interface KeycodeOption {
+export interface KeycodeOption {
   label: string
+  shortLabel?: string
+  description?: string
+  shortcut?: string
   code: string
   value: number
 }
@@ -139,6 +142,9 @@ export const CUSTOM_ACTIONS: Record<string, number> = {
   WL_MAINTENANCE: 0x7e44,
   WL_FIGMA: 0x7e45,
   WL_VOICE: 0x7e46,
+  WL_SKILLS: 0x7e47,
+  WL_MCP: 0x7e48,
+  WL_SIDE_CHAT: 0x7e49,
 }
 
 const NAMES_BY_VALUE = new Map<number, string>()
@@ -218,7 +224,10 @@ export function keycodeDescription(value: number): string {
         WL_EFFORT_UP: 'Increase reasoning effort',
         WL_MAINTENANCE: 'Hold for bootloader recovery',
         WL_FIGMA: 'Launch Figma through the bridge',
-        WL_VOICE: 'Hold to dictate into the Codex composer',
+        WL_VOICE: 'Start dictation in the Codex composer',
+        WL_SKILLS: 'Open the Codex skills catalog',
+        WL_MCP: 'Open Codex MCP settings',
+        WL_SIDE_CHAT: 'Open a Codex side chat',
       }[custom] ?? custom
     )
   }
@@ -235,6 +244,16 @@ function option(label: string, code: string): KeycodeOption {
   return { label, code, value }
 }
 
+function codexOption(
+  label: string,
+  shortLabel: string,
+  code: string,
+  shortcut: string,
+  description: string,
+): KeycodeOption {
+  return { ...option(label, code), shortLabel, shortcut, description }
+}
+
 const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => option(letter, `KC_${letter}`))
 const numbers = '1234567890'.split('').map((number) => option(number, `KC_${number}`))
 
@@ -243,6 +262,152 @@ export const ASSIGNMENT_GROUPS: {
   label: string
   items: KeycodeOption[]
 }[] = [
+  {
+    id: 'codex',
+    label: 'Codex App',
+    items: [
+      codexOption(
+        'Open side chat',
+        'Side chat',
+        'WL_SIDE_CHAT',
+        '⌥⌘S',
+        'Open or close the side chat panel',
+      ),
+      codexOption(
+        'Toggle file tree',
+        'File tree',
+        'LSG(KC_E)',
+        '⇧⌘E',
+        'Show or hide files for the current workspace',
+      ),
+      codexOption(
+        'Search chats',
+        'Search',
+        'LCA(KC_F)',
+        '⌃⌥F',
+        'Find and switch between Codex chats',
+      ),
+      codexOption(
+        'Open browser tab',
+        'Browser',
+        'G(KC_T)',
+        '⌘T',
+        'Open a new tab in the Codex browser panel',
+      ),
+      codexOption(
+        'Hold for dictation',
+        'Dictation',
+        'WL_VOICE',
+        'Hold',
+        'Record while held and transcribe when released',
+      ),
+      codexOption(
+        'Open Skills',
+        'Skills',
+        'WL_SKILLS',
+        '⌃⌥S',
+        'Open the Codex skills catalog',
+      ),
+      codexOption(
+        'Open MCP settings',
+        'MCP',
+        'WL_MCP',
+        '⌃⌥M',
+        'Manage connected MCP tools and servers',
+      ),
+      codexOption(
+        'New chat',
+        'New chat',
+        'G(KC_N)',
+        '⌘N',
+        'Start a new Codex chat',
+      ),
+      codexOption(
+        'Open command menu',
+        'Commands',
+        'G(KC_K)',
+        '⌘K',
+        'Search all available Codex commands',
+      ),
+      codexOption(
+        'Toggle browser panel',
+        'Browser panel',
+        'LSG(KC_B)',
+        '⇧⌘B',
+        'Show or hide the browser panel',
+      ),
+      codexOption(
+        'Toggle bottom panel',
+        'Bottom panel',
+        'G(KC_J)',
+        '⌘J',
+        'Show or hide the terminal and output area',
+      ),
+      codexOption(
+        'Toggle sidebar',
+        'Sidebar',
+        'G(KC_B)',
+        '⌘B',
+        'Show or hide the main task sidebar',
+      ),
+      codexOption(
+        'Open terminal',
+        'Terminal',
+        'C(KC_GRV)',
+        '⌃`',
+        'Open the integrated terminal',
+      ),
+      codexOption(
+        'Search workspace files',
+        'Find files',
+        'G(KC_P)',
+        '⌘P',
+        'Search files in the current workspace',
+      ),
+      codexOption(
+        'Previous chat',
+        'Previous chat',
+        'LSG(KC_LBRC)',
+        '⇧⌘[',
+        'Move to the previous visible chat',
+      ),
+      codexOption(
+        'Next chat',
+        'Next chat',
+        'LSG(KC_RBRC)',
+        '⇧⌘]',
+        'Move to the next visible chat',
+      ),
+      codexOption(
+        'Decrease reasoning effort',
+        'Effort down',
+        'WL_EFFORT_DOWN',
+        '⌃⌥↓',
+        'Use a faster, lighter reasoning level',
+      ),
+      codexOption(
+        'Increase reasoning effort',
+        'Effort up',
+        'WL_EFFORT_UP',
+        '⌃⌥↑',
+        'Use a deeper reasoning level',
+      ),
+      codexOption(
+        'Show keyboard shortcuts',
+        'Shortcuts',
+        'G(KC_SLSH)',
+        '⌘/',
+        'Open Codex keyboard shortcut settings',
+      ),
+      codexOption(
+        'Open Codex pet',
+        'Pet',
+        'WL_PET',
+        '/pet',
+        'Open the Codex companion',
+      ),
+    ],
+  },
   {
     id: 'keys',
     label: 'Keys',
@@ -283,44 +448,30 @@ export const ASSIGNMENT_GROUPS: {
     items: Array.from({ length: 16 }, (_, index) => option(`Macro slot ${index}`, `MACRO(${index})`)),
   },
   {
-    id: 'codex',
-    label: 'Codex app',
-    items: [
-      option('New chat', 'G(KC_N)'),
-      option('Quick chat', 'LAG(KC_N)'),
-      option('Open command menu', 'G(KC_K)'),
-      option('Approve request', 'KC_ENT'),
-      option('Decline request', 'KC_ESC'),
-      option('Go to skill', 'LCA(KC_S)'),
-      option('Configure MCP', 'LCA(KC_M)'),
-      option('Open terminal', 'C(KC_GRV)'),
-      option('Open browser tab', 'G(KC_T)'),
-      option('Toggle browser panel', 'LSG(KC_B)'),
-      option('Open side chat', 'LAG(KC_S)'),
-      option('Toggle sidebar', 'G(KC_B)'),
-      option('Toggle bottom panel', 'G(KC_J)'),
-      option('Toggle review panel', 'LAG(KC_B)'),
-      option('Open review tab', 'LCS(KC_G)'),
-      option('Previous chat', 'LSG(KC_LBRC)'),
-      option('Next chat', 'LSG(KC_RBRC)'),
-      option('Search files', 'G(KC_P)'),
-      option('Keyboard shortcuts', 'G(KC_SLSH)'),
-    ],
-  },
-  {
     id: 'firmware',
     label: 'Firmware',
     items: [
-      option('Codex pet', 'WL_PET'),
-      option('Push repository', 'WL_PUSH'),
-      option('Reasoning effort down', 'WL_EFFORT_DOWN'),
-      option('Reasoning effort up', 'WL_EFFORT_UP'),
-      option('Maintenance / recovery', 'WL_MAINTENANCE'),
-      option('Launch Figma', 'WL_FIGMA'),
-      option('Hold to dictate', 'WL_VOICE'),
-      option('Lighting toggle', 'UG_TOGG'),
+      { ...option('Push repository', 'WL_PUSH'), shortLabel: 'Push' },
+      { ...option('Maintenance / recovery', 'WL_MAINTENANCE'), shortLabel: 'Recovery' },
+      { ...option('Launch Figma', 'WL_FIGMA'), shortLabel: 'Figma' },
+      { ...option('Lighting toggle', 'UG_TOGG'), shortLabel: 'Lights' },
       option('F14 fallback', 'KC_F14'),
       option('F15 fallback', 'KC_F15'),
     ],
   },
 ]
+
+export function assignmentOption(value: number, preferredGroupId?: string) {
+  if (preferredGroupId) {
+    const preferred = ASSIGNMENT_GROUPS.find((group) => group.id === preferredGroupId)?.items.find(
+      (item) => item.value === value,
+    )
+    if (preferred || preferredGroupId !== 'codex') return preferred
+  }
+  return ASSIGNMENT_GROUPS.flatMap((group) => group.items).find((item) => item.value === value)
+}
+
+export function assignmentLabel(value: number, preferredGroupId?: string) {
+  const item = assignmentOption(value, preferredGroupId)
+  return item?.shortLabel ?? item?.label ?? formatKeycode(value)
+}

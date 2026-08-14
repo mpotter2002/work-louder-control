@@ -69,6 +69,7 @@ export const WL_STATUSES: Record<
 export const WL_SLOT_COUNT = 2
 
 export const WL_SLOT_LABELS = ['Thread 1', 'Thread 2'] as const
+export const WL_LIGHTING_MAX_BRIGHTNESS = 150
 
 export const WL_ACTIONS: Record<number, string> = {
   1: 'Push',
@@ -136,7 +137,7 @@ export function encodeWlLightingProfile(layer: number, settings: LightingSetting
     WL_LIGHTING_EFFECT_IDS[settings.effect],
     primary.hue,
     primary.saturation,
-    clampByte(settings.brightness),
+    clampRange(settings.brightness, 0, WL_LIGHTING_MAX_BRIGHTNESS),
     secondary.hue,
     secondary.saturation,
     clampByte(settings.speed),
@@ -338,9 +339,15 @@ export class WlClient {
   async setLightingProfile(layer: number, settings: LightingSettings) {
     const response = await this.transport.request(
       encodeWlLightingProfile(layer, settings),
-      (packet) => isWlPacket(packet, WL_SET_LIGHTING_PROFILE),
+      (packet) =>
+        isWlPacket(packet) &&
+        (packet[4] === WL_SET_LIGHTING_PROFILE || packet[4] === 0xff),
     )
-    if (response[5] !== layer || response[6] !== WL_LIGHTING_EFFECT_IDS[settings.effect]) {
+    if (
+      response[4] !== WL_SET_LIGHTING_PROFILE ||
+      response[5] !== layer ||
+      response[6] !== WL_LIGHTING_EFFECT_IDS[settings.effect]
+    ) {
       throw new Error('Device rejected the lighting profile')
     }
   }
@@ -355,7 +362,11 @@ function normalizeStatus(value: number): StatusId {
 }
 
 function clampByte(value: number) {
-  return Math.max(0, Math.min(255, Math.round(value)))
+  return clampRange(value, 0, 255)
+}
+
+function clampRange(value: number, minimum: number, maximum: number) {
+  return Math.max(minimum, Math.min(maximum, Math.round(value)))
 }
 
 function hexToHsv(hex: string) {
