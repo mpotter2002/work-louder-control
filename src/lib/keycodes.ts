@@ -224,7 +224,7 @@ export function keycodeDescription(value: number): string {
         WL_EFFORT_UP: 'Increase reasoning effort',
         WL_MAINTENANCE: 'Hold for bootloader recovery',
         WL_FIGMA: 'Launch Figma through the bridge',
-        WL_VOICE: 'Start dictation in the Codex composer',
+        WL_VOICE: 'Toggle native macOS Dictation',
         WL_SKILLS: 'Open the Codex skills catalog',
         WL_MCP: 'Open Codex MCP settings',
         WL_SIDE_CHAT: 'Open a Codex side chat',
@@ -295,11 +295,11 @@ export const ASSIGNMENT_GROUPS: {
         'Open a new tab in the Codex browser panel',
       ),
       codexOption(
-        'Hold for dictation',
+        'Toggle dictation',
         'Dictation',
         'WL_VOICE',
-        'Hold',
-        'Record while held and transcribe when released',
+        '2x Cmd',
+        'Press once to start macOS Dictation and again to stop',
       ),
       codexOption(
         'Open Skills',

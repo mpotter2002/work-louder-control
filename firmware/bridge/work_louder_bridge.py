@@ -8,6 +8,7 @@ import argparse
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import hid
 
@@ -194,8 +195,16 @@ def command_slot(slot: int, name: str, ttl: int) -> int:
     return 0
 
 
-def run_action(action: str) -> None:
-    command = ACTION_COMMANDS.get(action)
+def action_command(action: str, push_repo: Path | None = None) -> list[str] | None:
+    if action == "push":
+        if push_repo is None:
+            return None
+        return ["git", "-C", str(push_repo), "push"]
+    return ACTION_COMMANDS.get(action)
+
+
+def run_action(action: str, push_repo: Path | None = None) -> None:
+    command = action_command(action, push_repo)
     if command is None:
         return
     try:
@@ -204,7 +213,7 @@ def run_action(action: str) -> None:
         print(f"error: could not run {action}: {error}", file=sys.stderr)
 
 
-def command_listen(run: bool) -> int:
+def command_listen(run: bool, push_repo: Path | None = None) -> int:
     bridge = WorkLouderBridge()
     print("Listening for Work Louder actions. Press Ctrl-C to stop.")
     try:
@@ -212,7 +221,7 @@ def command_listen(run: bool) -> int:
             for action in bridge.take_actions(250):
                 print(action, flush=True)
                 if run:
-                    run_action(action)
+                    run_action(action, push_repo)
     except KeyboardInterrupt:
         return 0
     finally:
@@ -233,6 +242,11 @@ def parse_args() -> argparse.Namespace:
         "--run",
         action="store_true",
         help="Carry out host actions such as launching Figma.",
+    )
+    listen_parser.add_argument(
+        "--push-repo",
+        type=Path,
+        help="Repository to push when the Push key is pressed.",
     )
 
     status_parser = subparsers.add_parser(
@@ -276,7 +290,7 @@ def main() -> int:
         if args.command == "slot":
             return command_slot(args.slot, args.status, args.ttl)
         if args.command == "listen":
-            return command_listen(args.run)
+            return command_listen(args.run, args.push_repo)
     except (RuntimeError, TimeoutError, hid.HIDException) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

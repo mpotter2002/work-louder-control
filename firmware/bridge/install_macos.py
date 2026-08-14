@@ -36,7 +36,7 @@ def uninstall() -> None:
     print(f"Removed {LABEL}")
 
 
-def install() -> None:
+def install(push_repo: Path | None = None) -> None:
     bridge_dir = Path(__file__).resolve().parent
     watcher = bridge_dir / "codex_status_watcher.py"
     codex_dir = Path.home() / ".codex"
@@ -51,15 +51,19 @@ def install() -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
+    program_arguments = [
+        sys.executable,
+        str(watcher),
+        "--database",
+        str(database),
+        "--run-actions",
+    ]
+    if push_repo is not None:
+        program_arguments.extend(["--push-repo", str(push_repo.resolve())])
+
     payload = {
         "Label": LABEL,
-        "ProgramArguments": [
-            sys.executable,
-            str(watcher),
-            "--database",
-            str(database),
-            "--run-actions",
-        ],
+        "ProgramArguments": program_arguments,
         "WorkingDirectory": str(bridge_dir),
         "RunAtLoad": True,
         "KeepAlive": True,
@@ -81,13 +85,18 @@ def install() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--uninstall", action="store_true")
+    parser.add_argument(
+        "--push-repo",
+        type=Path,
+        help="Repository to push when the keyboard Push key is pressed.",
+    )
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("This installer supports macOS only.")
     if args.uninstall:
         uninstall()
     else:
-        install()
+        install(args.push_repo)
     return 0
 
 

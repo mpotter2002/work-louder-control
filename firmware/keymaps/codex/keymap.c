@@ -453,7 +453,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case WL_PUSH:
             if (record->event.pressed) {
                 wl_send_action(WL_ACTION_PUSH);
-                tap_code(KC_F14);
             }
             return false;
         case WL_EFFORT_DOWN:
@@ -476,9 +475,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
         case WL_VOICE:
             if (record->event.pressed) {
-                register_code16(LCTL(LALT(KC_D)));
-            } else {
-                unregister_code16(LCTL(LALT(KC_D)));
+                tap_code(KC_LGUI);
+                wait_ms(80);
+                tap_code(KC_LGUI);
             }
             return false;
         case WL_SKILLS:

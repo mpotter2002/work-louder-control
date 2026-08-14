@@ -97,12 +97,13 @@ The Codex control layout uses these assigned shortcuts:
 - MCP: `Ctrl+Alt+M`
 - Search Chats: `Ctrl+Alt+F`
 - File Tree panel: `Command+Shift+E`
-- Dictation hold: `Ctrl+Alt+D`, held for the full physical button press
+- Dictation toggle: double-taps Left Command to invoke macOS Dictation
 - Side Chat: `Option+Command+S`, including the former Review button
 - New Browser Tab: `Command+T`
 
-Actions `1` and `4` also emit a fallback keycode, `F14` and `F15`, so a host
-without the bridge running can still bind them. The effort actions instead tap
+Action `4` also emits a fallback keycode, `F15`, so a host without the bridge
+running can still bind Figma. Push is bridge-only because macOS treats F14 as a
+display-brightness key on some keyboards. The effort actions instead tap
 `Ctrl+Alt+Down` and `Ctrl+Alt+Up`, which must be assigned to
 `composer.decreaseReasoningEffort` and `composer.increaseReasoningEffort` in
 Codex under Settings, Keyboard Shortcuts, because those commands ship with no

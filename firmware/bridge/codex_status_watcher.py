@@ -252,10 +252,11 @@ class RolloutMonitor:
 
 
 class StatusPublisher:
-    def __init__(self) -> None:
+    def __init__(self, push_repo: Path | None = None) -> None:
         self.last_sent: str | None = None
         self.last_slots: list[str] = ["none"] * SLOT_COUNT
         self.last_full_sync_at = float("-inf")
+        self.push_repo = push_repo
 
     def publish(self, status: str, slots: list[str], run_actions: bool = False) -> bool:
         force_sync = time.monotonic() - self.last_full_sync_at >= FULL_SYNC_SECONDS
@@ -304,7 +305,7 @@ class StatusPublisher:
             if run_actions:
                 for action in bridge.take_actions():
                     logging.info("Work Louder action: %s", action)
-                    run_action(action)
+                    run_action(action, self.push_repo)
         finally:
             bridge.close()
 
@@ -330,6 +331,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Carry out host actions such as launching Figma.",
     )
+    parser.add_argument(
+        "--push-repo",
+        type=Path,
+        help="Repository to push when the Push key is pressed.",
+    )
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
@@ -342,7 +348,7 @@ def main() -> int:
     )
 
     monitor = RolloutMonitor(args.database)
-    publisher = StatusPublisher()
+    publisher = StatusPublisher(args.push_repo)
     last_printed: str | None = None
 
     while True:

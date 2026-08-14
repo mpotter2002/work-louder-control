@@ -25,11 +25,12 @@ Test the connected board:
 Install the per-user LaunchAgent:
 
 ```bash
-.venv/bin/python install_macos.py
+.venv/bin/python install_macos.py --push-repo /path/to/work-louder-control
 ```
 
 The installer uses the current virtual environment and repository path. It
-does not require `sudo`.
+does not require `sudo`. When `--push-repo` is configured, the hardware Push
+key runs `git push` for that repository.
 
 Uninstall:
 
