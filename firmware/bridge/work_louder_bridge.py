@@ -51,6 +51,10 @@ ACTION_COMMANDS = {
     "figma": ["open", "-a", "Figma"],
 }
 
+ACTION_SUCCESS = "success"
+ACTION_NOOP = "noop"
+ACTION_ERROR = "error"
+
 
 def raw_interfaces() -> list[dict]:
     return [
@@ -203,16 +207,36 @@ def action_command(action: str, push_repo: Path | None = None) -> list[str] | No
     return ACTION_COMMANDS.get(action)
 
 
-def run_action(action: str, push_repo: Path | None = None) -> bool:
+def pending_push_count(push_repo: Path) -> int:
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(push_repo),
+            "rev-list",
+            "--count",
+            "@{upstream}..HEAD",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return int(result.stdout.strip())
+
+
+def run_action(action: str, push_repo: Path | None = None) -> str:
     command = action_command(action, push_repo)
     if command is None:
-        return False
+        return ACTION_ERROR
     try:
+        if action == "push" and push_repo is not None:
+            if pending_push_count(push_repo) == 0:
+                return ACTION_NOOP
         subprocess.run(command, check=True)
-    except (OSError, subprocess.CalledProcessError) as error:
+    except (OSError, subprocess.CalledProcessError, ValueError) as error:
         print(f"error: could not run {action}: {error}", file=sys.stderr)
-        return False
-    return True
+        return ACTION_ERROR
+    return ACTION_SUCCESS
 
 
 def command_listen(run: bool, push_repo: Path | None = None) -> int:

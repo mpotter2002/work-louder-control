@@ -30,9 +30,13 @@ Statuses:
 - `4`: complete, green
 - `5`: error, pink-red
 
-The background bridge normally keeps this LED off. After `git push` succeeds,
-it sends `complete` with a two-second timeout, producing a brief green
-confirmation before the key returns to off.
+The background bridge normally keeps this LED off. A Push key press produces:
+
+- Green for two seconds when commits are uploaded successfully.
+- Yellow for two seconds when the branch is already up to date.
+- Red for three seconds when Git reports an error.
+
+The key returns to off after each result.
 
 ### Ping (`0x02`)
 

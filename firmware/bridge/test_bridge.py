@@ -31,17 +31,50 @@ class PacketTests(unittest.TestCase):
     @patch.object(bridge.subprocess, "run")
     def test_run_action_executes_push(self, run):
         repo = Path("/tmp/work-louder-control")
-        self.assertTrue(bridge.run_action("push", repo))
-        run.assert_called_once_with(
-            ["git", "-C", str(repo), "push"],
-            check=True,
+        run.side_effect = [
+            bridge.subprocess.CompletedProcess([], 0, stdout="1\n"),
+            bridge.subprocess.CompletedProcess([], 0),
+        ]
+        self.assertEqual(
+            bridge.run_action("push", repo),
+            bridge.ACTION_SUCCESS,
         )
+        self.assertEqual(run.call_count, 2)
+        run.assert_any_call(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "rev-list",
+                "--count",
+                "@{upstream}..HEAD",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        run.assert_any_call(["git", "-C", str(repo), "push"], check=True)
+
+    @patch.object(bridge.subprocess, "run")
+    def test_run_action_reports_nothing_to_push(self, run):
+        repo = Path("/tmp/work-louder-control")
+        run.return_value = bridge.subprocess.CompletedProcess(
+            [],
+            0,
+            stdout="0\n",
+        )
+        self.assertEqual(
+            bridge.run_action("push", repo),
+            bridge.ACTION_NOOP,
+        )
+        self.assertEqual(run.call_count, 1)
 
     @patch.object(bridge.subprocess, "run")
     def test_run_action_reports_failure(self, run):
         run.side_effect = bridge.subprocess.CalledProcessError(1, ["git"])
-        self.assertFalse(
-            bridge.run_action("push", Path("/tmp/work-louder-control"))
+        self.assertEqual(
+            bridge.run_action("push", Path("/tmp/work-louder-control")),
+            bridge.ACTION_ERROR,
         )
 
 

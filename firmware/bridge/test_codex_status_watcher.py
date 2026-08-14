@@ -161,7 +161,11 @@ class StatusPublisherTests(unittest.TestCase):
         repo = Path("/tmp/work-louder-control")
         with (
             patch.object(watcher, "WorkLouderBridge", FakeBridge),
-            patch.object(watcher, "run_action", return_value=True) as run_action,
+            patch.object(
+                watcher,
+                "run_action",
+                return_value=watcher.ACTION_SUCCESS,
+            ) as run_action,
         ):
             publisher = watcher.StatusPublisher(repo)
             publisher.publish(
@@ -176,6 +180,49 @@ class StatusPublisherTests(unittest.TestCase):
             watcher.build_packet(
                 watcher.CMD_SET_STATUS,
                 watcher.STATUSES["complete"],
+                2,
+            ),
+        )
+
+    def test_up_to_date_push_flashes_yellow(self):
+        packets = []
+
+        class FakeBridge:
+            def send(self, packet):
+                packets.append(packet)
+                response = bytearray(watcher.build_packet(0, 0, 0))
+                response[7] = (
+                    packet[6]
+                    if packet[4] == watcher.build_slot_packet(0, 0)[4]
+                    else packet[5]
+                )
+                return response
+
+            def take_actions(self):
+                return ["push"]
+
+            def close(self):
+                pass
+
+        with (
+            patch.object(watcher, "WorkLouderBridge", FakeBridge),
+            patch.object(
+                watcher,
+                "run_action",
+                return_value=watcher.ACTION_NOOP,
+            ),
+        ):
+            watcher.StatusPublisher(Path("/tmp/repo")).publish(
+                "none",
+                ["working", "idle"],
+                run_actions=True,
+            )
+
+        self.assertEqual(
+            packets[-1],
+            watcher.build_packet(
+                watcher.CMD_SET_STATUS,
+                watcher.STATUSES["needs-input"],
                 2,
             ),
         )

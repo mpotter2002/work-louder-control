@@ -16,6 +16,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from work_louder_bridge import (
+    ACTION_ERROR,
+    ACTION_NOOP,
+    ACTION_SUCCESS,
     CMD_SET_STATUS,
     SLOT_COUNT,
     STATUSES,
@@ -315,12 +318,22 @@ class StatusPublisher:
         if run_actions:
             for action in bridge.take_actions():
                 logging.info("Work Louder action: %s", action)
-                succeeded = run_action(action, self.push_repo)
-                if action == "push" and succeeded:
+                result = run_action(action, self.push_repo)
+                if action == "push":
+                    status_name = {
+                        ACTION_SUCCESS: "complete",
+                        ACTION_NOOP: "needs-input",
+                        ACTION_ERROR: "error",
+                    }[result]
+                    ttl = 3 if result == ACTION_ERROR else 2
                     response = bridge.send(
-                        build_packet(CMD_SET_STATUS, STATUSES["complete"], 2)
+                        build_packet(
+                            CMD_SET_STATUS,
+                            STATUSES[status_name],
+                            ttl,
+                        )
                     )
-                    if response[7] != STATUSES["complete"]:
+                    if response[7] != STATUSES[status_name]:
                         raise RuntimeError(
                             "Keyboard rejected Push confirmation"
                         )
