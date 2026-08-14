@@ -139,8 +139,11 @@ class DiscoveryTests(unittest.TestCase):
 
 class StatusPublisherTests(unittest.TestCase):
     def test_actions_receive_the_configured_push_repository(self):
+        packets = []
+
         class FakeBridge:
             def send(self, packet):
+                packets.append(packet)
                 response = bytearray(watcher.build_packet(0, 0, 0))
                 response[7] = (
                     packet[6]
@@ -158,15 +161,24 @@ class StatusPublisherTests(unittest.TestCase):
         repo = Path("/tmp/work-louder-control")
         with (
             patch.object(watcher, "WorkLouderBridge", FakeBridge),
-            patch.object(watcher, "run_action") as run_action,
+            patch.object(watcher, "run_action", return_value=True) as run_action,
         ):
-            watcher.StatusPublisher(repo).publish(
-                "working",
+            publisher = watcher.StatusPublisher(repo)
+            publisher.publish(
+                "none",
                 ["working", "idle"],
                 run_actions=True,
             )
 
         run_action.assert_called_once_with("push", repo)
+        self.assertEqual(
+            packets[-1],
+            watcher.build_packet(
+                watcher.CMD_SET_STATUS,
+                watcher.STATUSES["complete"],
+                2,
+            ),
+        )
 
     def test_periodically_resends_unchanged_status_after_device_reboot(self):
         bridges = []

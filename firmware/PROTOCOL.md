@@ -15,18 +15,24 @@ small host bridge. All reports are 32 bytes and use this header:
 
 ### Set status (`0x01`)
 
+Controls the Push key confirmation LED on the Codex layer.
+
 - Byte 5: status
 - Byte 6: time to live in seconds (`0` means no timeout)
 - Byte 7 in the response: accepted status
 
 Statuses:
 
-- `0`: no overlay; the Push key rejoins the breathing effect
+- `0`: off
 - `1`: idle, white
 - `2`: working, blue
 - `3`: needs input, yellow
 - `4`: complete, green
 - `5`: error, pink-red
+
+The background bridge normally keeps this LED off. After `git push` succeeds,
+it sends `complete` with a two-second timeout, producing a brief green
+confirmation before the key returns to off.
 
 ### Ping (`0x02`)
 

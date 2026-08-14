@@ -31,10 +31,17 @@ class PacketTests(unittest.TestCase):
     @patch.object(bridge.subprocess, "run")
     def test_run_action_executes_push(self, run):
         repo = Path("/tmp/work-louder-control")
-        bridge.run_action("push", repo)
+        self.assertTrue(bridge.run_action("push", repo))
         run.assert_called_once_with(
             ["git", "-C", str(repo), "push"],
             check=True,
+        )
+
+    @patch.object(bridge.subprocess, "run")
+    def test_run_action_reports_failure(self, run):
+        run.side_effect = bridge.subprocess.CalledProcessError(1, ["git"])
+        self.assertFalse(
+            bridge.run_action("push", Path("/tmp/work-louder-control"))
         )
 
 

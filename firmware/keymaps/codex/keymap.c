@@ -619,10 +619,13 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
     rgb_t status_color;
     uint8_t status_led = g_led_config.matrix_co[WL_STATUS_ROW][WL_STATUS_COL];
-    if (status_led != NO_LED && status_led >= led_min && status_led < led_max &&
-        wl_status_color(wl_current_status, &status_color)) {
-        status_color = wl_scale_rgb(status_color, WL_STATUS_BRIGHTNESS);
-        rgb_matrix_set_color(status_led, status_color.r, status_color.g, status_color.b);
+    if (wl_active_lighting_layer == L_CODEX && status_led != NO_LED &&
+        status_led >= led_min && status_led < led_max) {
+        rgb_matrix_set_color(status_led, 0, 0, 0);
+        if (wl_status_color(wl_current_status, &status_color)) {
+            status_color = wl_scale_rgb(status_color, WL_STATUS_BRIGHTNESS);
+            rgb_matrix_set_color(status_led, status_color.r, status_color.g, status_color.b);
+        }
     }
 
     for (uint8_t slot = 0; slot < WL_SLOT_COUNT; slot++) {

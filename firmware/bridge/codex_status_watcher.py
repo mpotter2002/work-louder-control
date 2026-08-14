@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Mirror local Codex task state onto the Work Louder status light."""
+"""Mirror local Codex task state onto the Work Louder indicator lights."""
 
 from __future__ import annotations
 
@@ -315,7 +315,16 @@ class StatusPublisher:
         if run_actions:
             for action in bridge.take_actions():
                 logging.info("Work Louder action: %s", action)
-                run_action(action, self.push_repo)
+                succeeded = run_action(action, self.push_repo)
+                if action == "push" and succeeded:
+                    response = bridge.send(
+                        build_packet(CMD_SET_STATUS, STATUSES["complete"], 2)
+                    )
+                    if response[7] != STATUSES["complete"]:
+                        raise RuntimeError(
+                            "Keyboard rejected Push confirmation"
+                        )
+                    self.last_full_sync_at = time.monotonic()
 
         return True
 
@@ -369,7 +378,7 @@ def main() -> int:
                 last_printed = printable
         else:
             try:
-                publisher.publish(status, slots, args.run_actions)
+                publisher.publish("none", slots, args.run_actions)
             except Exception as error:
                 publisher.reset_bridge()
                 logging.warning("Could not update Work Louder status: %s", error)

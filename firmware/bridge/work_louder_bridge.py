@@ -203,14 +203,16 @@ def action_command(action: str, push_repo: Path | None = None) -> list[str] | No
     return ACTION_COMMANDS.get(action)
 
 
-def run_action(action: str, push_repo: Path | None = None) -> None:
+def run_action(action: str, push_repo: Path | None = None) -> bool:
     command = action_command(action, push_repo)
     if command is None:
-        return
+        return False
     try:
         subprocess.run(command, check=True)
     except (OSError, subprocess.CalledProcessError) as error:
         print(f"error: could not run {action}: {error}", file=sys.stderr)
+        return False
+    return True
 
 
 def command_listen(run: bool, push_repo: Path | None = None) -> int:
