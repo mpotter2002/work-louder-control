@@ -555,7 +555,7 @@ function App() {
         </div>
       )}
 
-      <main>
+      <main key={tab} className="section-transition">
         {tab === 'layout' && activeProfile && (
           <LayoutView
             profile={activeProfile}
@@ -785,8 +785,27 @@ function MicroBoard({
   selected: EditorTarget
   setSelected: (target: EditorTarget) => void
 }) {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 })
+
   return (
-    <div className="device-stage">
+    <div
+      className="device-scene"
+      onPointerMove={(event) => {
+        if (event.pointerType !== 'mouse') return
+        const rect = event.currentTarget.getBoundingClientRect()
+        setTilt({
+          x: ((event.clientY - rect.top) / rect.height - 0.5) * -5,
+          y: ((event.clientX - rect.left) / rect.width - 0.5) * 7,
+        })
+      }}
+      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+    >
+      <div className="scene-header">
+        <div><span>YOUR CREATIVE SIDEKICK</span><strong>Make it yours.</strong></div>
+        <span className="scene-hint"><span>✳</span> Pick a key to customize</span>
+      </div>
+      <div className="device-perspective">
+      <div className="device-stage" style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)` }}>
       <div className="device-label">
         <span>CREATOR</span>
         <strong>MICRO</strong>
@@ -844,6 +863,9 @@ function MicroBoard({
           </button>
         ))}
       </div>
+      </div>
+      </div>
+      <div className="scene-footer"><span>01 / THE MICRO PAD</span><span>MADE FOR MAKING <span aria-hidden="true">✳</span></span></div>
     </div>
   )
 }

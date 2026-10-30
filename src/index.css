@@ -65,3 +65,10 @@ button:disabled {
   white-space: nowrap;
   border: 0;
 }
+
+:root {
+  --accent: #176a94;
+  --accent-dark: #105578;
+  --accent-soft: #e3f2f8;
+  --focus: rgba(23, 106, 148, .28);
+}
